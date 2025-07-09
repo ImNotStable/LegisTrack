@@ -1,6 +1,36 @@
-# LegisTrack Project Changes
+ # LegisTrack Project Changes
 
 This file documents all significant changes to the LegisTrack project. All entries are in reverse chronological order (newest first).
+
+## 2025-07-09 18:47 - [BUGFIX] Corrected AI instructions to reflect actual .env configuration approach
+- Affected: .github/copilot-instructions.md
+- Impact: Fixed configuration management section to accurately reflect the project's use of .env files with .env.example template, rather than suggesting profile-only approach. Updated environment variable standards to match actual implementation with DATABASE_URL, REDIS_HOST patterns. Ensures AI assistants will properly maintain the existing .env configuration system
+- Developer: AI Assistant
+- Reason: User requested to ensure current .env file approach is upheld in future operations, discovered instructions incorrectly suggested alternative configuration approach
+
+## 2025-07-09 18:42 - [CONFIG] Updated AI coding instructions based on codebase analysis
+- Affected: .github/copilot-instructions.md
+- Impact: Enhanced AI guidance with Windows-specific commands, accurate React Query patterns, proper cache key examples, and corrected configuration management approach. Updated build commands for Windows PowerShell environment. Added frontend project structure details and verified backend patterns match actual implementation
+- Developer: AI Assistant  
+- Reason: Analyzed actual codebase implementation to ensure AI instructions accurately reflect current project patterns, dependencies, and development environment requirements
+
+## 2025-07-09 17:57 - [FEATURE] Enhanced DocumentCard with political support gradient and UI cleanup
+- Affected: frontend/src/components/DocumentCard.tsx
+- Impact: Added dynamic gradient effect from top-left to bottom-right based on political support (blue → purple → red). Removed sponsors counter display. Cards are now colorless by default when no sponsor data exists. Gradient intensity reflects actual political support percentages
+- Developer: AI Assistant
+- Reason: User requested visual enhancement to show political support through gradient coloring and simplified UI by removing sponsor counters
+
+## 2025-07-09 17:47 - [REFACTOR] Removed sample test documents from database
+- Affected: PostgreSQL database documents table
+- Impact: Deleted sample documents (HR1-118 and S1-118) that were added for testing purposes. Database is now clean and ready for production data ingestion
+- Developer: AI Assistant
+- Reason: User requested removal of test data to return system to clean state
+
+## 2025-07-09 17:44 - [BUGFIX] Fixed empty documents issue and enabled data ingestion
+- Affected: backend/src/main/resources/application-docker.properties, .env, database sample data
+- Impact: Enabled scheduled data ingestion in docker profile, created .env file with placeholder API keys, added sample documents to database for testing. Fixed issue where no documents were displaying on webpage due to disabled scheduler and missing data
+- Developer: AI Assistant
+- Reason: Address user report of empty document feed by ensuring data ingestion functionality is properly enabled and providing sample data for immediate testing
 
 ## 2025-07-09 16:40 - [BUGFIX] Fixed .gitignore subdirectory targeting
 - Affected: .gitignore

@@ -1,6 +1,5 @@
 package com.legistrack.service
 
-import com.legistrack.entity.AiAnalysis
 import com.legistrack.entity.Document
 import com.legistrack.repository.AiAnalysisRepository
 import com.legistrack.repository.DocumentRepository

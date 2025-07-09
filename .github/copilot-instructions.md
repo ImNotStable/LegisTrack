@@ -14,6 +14,14 @@ LegisTrack is a U.S. legislation tracking and AI analysis system built with:
 - **External Services**: `CongressApiService` (Congress.gov API), `OllamaService` (AI analysis)
 - **Core Services**: `DocumentService`, `DataIngestionService`, `ScheduledDataIngestionService`
 - **Controllers**: REST APIs with `/api/documents` endpoints, CORS enabled for localhost:3000
+- **Configuration**: Environment-specific profiles in `application.properties` and `application-docker.properties`
+
+### Frontend Structure (`frontend/src/`)
+- **Components**: Reusable UI components with TailwindCSS styling
+- **Hooks**: `useApi.ts` with React Query hooks for data fetching
+- **Services**: `api.ts` with centralized API calls and error handling
+- **Types**: TypeScript interfaces matching backend DTOs exactly
+- **Proxy**: Development proxy to backend at `http://localhost:8080`
 
 ### Data Flow & Integration Points
 1. **Scheduled Ingestion**: Hourly cron job (`ScheduledDataIngestionService`) fetches recent bills from Congress.gov API
@@ -31,7 +39,8 @@ LegisTrack is a U.S. legislation tracking and AI analysis system built with:
 
 #### Configuration Management
 - **Properties**: Environment-specific configs in `application.properties` and `application-docker.properties`
-- **Docker**: All services orchestrated via `docker-compose.yml`, API keys injected as environment variables
+- **Environment Variables**: All sensitive configuration stored in `.env` file (not committed), with `.env.example` template
+- **Docker**: All services orchestrated via `docker-compose.yml`, API keys injected from `.env` as environment variables
 - **Profiles**: Use `spring.profiles.active=docker` for containerized environments
 
 #### Testing Strategy
@@ -42,27 +51,32 @@ LegisTrack is a U.S. legislation tracking and AI analysis system built with:
 ## Critical Developer Workflows
 
 ### Local Development Setup
-```bash
-# Start infrastructure services
+```powershell
+# Start infrastructure services (Windows PowerShell)
 docker-compose up -d postgres redis ollama
 
 # Run backend (requires JDK 21)
-cd backend && ./gradlew bootRun
+cd backend
+./gradlew.bat bootRun
 
-# Run frontend
-cd frontend && npm start
+# Run frontend (separate terminal)
+cd frontend
+npm start
 ```
 
 ### Key Build Commands
 - **Full System**: `docker-compose up -d` (includes auto-rebuild)
-- **Backend Only**: `./gradlew bootRun` or use VS Code task "Start LegisTrack System"
-- **Tests**: `./gradlew test` (includes TestContainers)
-- **Native Build**: `./gradlew nativeCompile` (GraalVM)
+- **Backend Only**: `./gradlew.bat bootRun` (Windows) or use VS Code task "Start LegisTrack System"
+- **Tests**: `./gradlew.bat test` (includes TestContainers)
+- **Native Build**: `./gradlew.bat nativeCompile` (GraalVM)
+- **Performance Build**: Gradle optimized with G1GC, parallel forks, and maxParallelForks
 
 ### Database Operations
 - **Migrations**: Flyway handles schema changes in `db/migration/V*__*.sql`
 - **Manual Ingestion**: POST to `/api/documents/ingest?fromDate=2024-01-01`
-- **Connection**: PostgreSQL on localhost:5432, credentials in docker-compose.yml
+- **Connection**: PostgreSQL on localhost:5432, credentials in docker-compose.yml and `.env` file
+- **Init Scripts**: Database initialization via `db/init.sql` in docker-entrypoint-initdb.d
+- **Init Scripts**: Database initialization via `db/init.sql` in docker-entrypoint-initdb.d
 
 ## External Dependencies & APIs
 
@@ -89,13 +103,15 @@ cd frontend && npm start
 - **Documents** have many **AiAnalyses** (versioned AI insights with validity flag)
 
 ### API Response Patterns
-- **Pagination**: Spring Data `Page<T>` with configurable sort/size
-- **DTOs**: Separate `DocumentSummaryDto` vs `DocumentDetailDto` for list/detail views
+- **Pagination**: Spring Data `Page<T>` with configurable sort/size parameters
+- **DTOs**: Separate `DocumentSummary` vs `DocumentDetail` for list/detail views
 - **Error Responses**: Map format `{"success": false, "message": "..."}`
+- **Query Parameters**: Standard Spring params (page, size, sortBy, sortDir)
 
 ### Frontend State Management
-- **React Query**: 5-minute stale time, 2 retries, for API caching
-- **Router**: Simple routes, redirect unknown paths to document feed
+- **React Query**: 5-minute stale time (`staleTime: 5 * 60 * 1000`), default retries for API caching
+- **Hooks**: Custom `useDocuments` and `useTriggerDataIngestion` hooks in `hooks/useApi.ts`
+- **Router**: React Router v6 with simple routes, redirect unknown paths to document feed
 - **Styling**: TailwindCSS with responsive design, Heroicons for UI
 
 ## Coding Rules & Guidelines
@@ -165,8 +181,9 @@ cd frontend && npm start
 - **REQUIRED**: Use data classes for entities with nullable fields for optional properties
 - **REQUIRED**: All external API calls must be `suspend` functions, wrap in `runBlocking` only for controllers
 - **REQUIRED**: Service methods should return null/empty collections on failure, not throw exceptions
-- **FORBIDDEN**: Never use blocking calls in service layer - use Spring WebFlux reactive patterns
+- **FORBIDDEN**: Never use blocking calls in service layer - use WebClient for reactive patterns
 - **REQUIRED**: Add comprehensive logging with SLF4J at DEBUG level for external API calls
+- **REQUIRED**: Use Spring's `@Cacheable` annotation with descriptive cache names
 - **⚠️ ENFORCEMENT**: AI must refuse any suggestion to use blocking I/O in services or skip logging requirements
 
 #### Database & JPA Patterns
@@ -180,29 +197,30 @@ cd frontend && npm start
 #### Caching & External API Rules
 - **REQUIRED**: Cache external API responses with `@Cacheable` using descriptive key patterns
 - **REQUIRED**: Include all method parameters in cache keys to avoid collision
-- **PATTERN**: Cache keys format: `service-method_param1_param2_paramN`
+- **PATTERN**: Cache keys format: `service-method_param1_param2_paramN` (e.g., `"congress-bills" + fromDate + offset + limit`)
 - **REQUIRED**: All API calls must have retry logic with exponential backoff (2-second minimum)
-- **REQUIRED**: Implement circuit breaker pattern for external service failures
+- **REQUIRED**: Use WebClient for non-blocking HTTP calls with timeout configuration
 - **REQUIRED**: Log request/response details at DEBUG level with sanitized sensitive data
-- **FORBIDDEN**: Never hardcode API keys - always use environment variables
+- **FORBIDDEN**: Never hardcode API keys - always use environment variables with `@Value` injection
 - **⚠️ ENFORCEMENT**: AI must refuse cache implementations that don't follow the key pattern or hardcoded credentials
 
 ### Frontend Development Rules
 
 #### React & TypeScript Standards
 - **REQUIRED**: Use functional components with hooks - no class components
-- **REQUIRED**: All API calls must use React Query with proper error handling
+- **REQUIRED**: All API calls must use React Query (`@tanstack/react-query@5.17.15`) with proper error handling
 - **REQUIRED**: TypeScript interfaces must match backend DTOs exactly
 - **FORBIDDEN**: Never use `any` type - create proper interfaces for all data structures
+- **REQUIRED**: Use exact query key patterns: `['documents', page, size, sortBy, sortDir]`
 - **⚠️ ENFORCEMENT**: AI must refuse class component suggestions or `any` type usage under any circumstances
 
 #### State Management & UI Rules
 - **REQUIRED**: Use React Query for server state, React Context for global UI state only
-- **REQUIRED**: Configure 5-minute stale time and 2 retries for all queries
-- **PATTERN**: Query keys format: `['documents', 'list', { page, size, sortBy }]`
+- **REQUIRED**: Configure 5-minute stale time and default retries for all queries: `staleTime: 5 * 60 * 1000`
+- **PATTERN**: Query keys format: `['documents', page, size, sortBy, sortDir]`
 - **REQUIRED**: Implement loading and error states for all async operations
 - **REQUIRED**: Use TailwindCSS utility classes - no custom CSS except for complex animations
-- **REQUIRED**: All icons must be from Heroicons library for consistency
+- **REQUIRED**: All icons must be from Heroicons library (`@heroicons/react@2.0.18`) for consistency
 - **REQUIRED**: Implement responsive design for mobile, tablet, and desktop viewports
 - **REQUIRED**: Add proper ARIA labels and semantic HTML for accessibility
 - **⚠️ ENFORCEMENT**: AI must refuse state management that mixes server/UI state, custom CSS suggestions, or non-Heroicons icon usage
@@ -222,16 +240,15 @@ cd frontend && npm start
 #### Environment & Configuration Standards
 - **REQUIRED**: All environment-specific configuration must be defined in `.env` file at project root
 - **REQUIRED**: Use `.env.example` template with placeholder values for all required variables
-- **PATTERN**: Environment variables format: `UPPER_SNAKE_CASE` with descriptive prefixes
+- **PATTERN**: Environment variables format: `UPPER_SNAKE_CASE` with Spring Boot @Value injection: `@Value("\${CONGRESS_API_KEY}")`
 - **REQUIRED**: Group related variables with consistent prefixes (e.g., `DATABASE_*`, `REDIS_*`, `OLLAMA_*`)
-- **FORBIDDEN**: Never commit actual `.env` files - only `.env.example` templates
+- **FORBIDDEN**: Never commit actual `.env` files with real API keys - only `.env.example` templates
 - **REQUIRED**: Document each variable's purpose and expected format in `.env.example`
-- **PATTERN**: Variable naming: `{SERVICE}_{COMPONENT}_{PROPERTY}` (e.g., `DATABASE_CONNECTION_URL`)
+- **PATTERN**: Variable naming: `{SERVICE}_{COMPONENT}_{PROPERTY}` (e.g., `DATABASE_URL`, `REDIS_HOST`)
 - **REQUIRED**: Include sensible defaults in `application.properties` that reference env vars
-- **REQUIRED**: All services must be defined in `docker-compose.yml`
-- **REQUIRED**: Use Alpine Linux base images for production builds
-- **REQUIRED**: Set resource limits for all containers
-- **FORBIDDEN**: Never commit secrets or API keys to version control
+- **REQUIRED**: All services must be defined in `docker-compose.yml` with resource limits
+- **REQUIRED**: Use Alpine Linux base images for production builds (`postgres:15-alpine`, `redis:7-alpine`)
+- **FORBIDDEN**: Never commit secrets or API keys to version control - use placeholder values in .env.example
 - **⚠️ ENFORCEMENT**: AI must refuse any configuration that bypasses .env standardization, commits actual secrets, or configurations without resource limits
 
 ### Error Handling & Monitoring Standards

@@ -12,7 +12,6 @@ out/
 */target/
 */out/
 backend/build/
-backend/build-cache/
 backend/.gradle/
 backend/.kotlin/
 frontend/build/
@@ -63,10 +62,8 @@ docker-compose.override.yml
 gradle-app.setting
 !gradle-wrapper.jar
 gradle-wrapper.properties.backup
-build-cache/
 backend/.gradle/
 backend/build/
-backend/build-cache/
 backend/gradle-app.setting
 
 # Kotlin

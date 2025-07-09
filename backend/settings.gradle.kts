@@ -31,8 +31,8 @@ gradle.startParameter.apply {
     isBuildCacheEnabled = true
     
     // Optimize console output
-    consoleOutput = org.gradle.api.logging.configuration.ConsoleOutput.Plain
-    logLevel = org.gradle.api.logging.LogLevel.LIFECYCLE
+    consoleOutput = ConsoleOutput.Plain
+    logLevel = LogLevel.LIFECYCLE
     
     // Set max workers
     maxWorkerCount = Runtime.getRuntime().availableProcessors()
@@ -46,7 +46,7 @@ gradle.settingsEvaluated {
     buildCache {
         local {
             isEnabled = true
-            directory = File(settingsDir, "build-cache")
+            directory = File(settingsDir, "build/cache")
         }
         remote<HttpBuildCache> {
             isEnabled = false // Enable if you have a remote cache server

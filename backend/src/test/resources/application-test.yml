@@ -38,7 +38,12 @@ app:
   congress:
     api:
       base-url: https://api.congress.gov/v3
-      key: test-api-key
+      key: test-congress-api-key
+  
+  govinfo:
+    api:
+      base-url: https://api.govinfo.gov
+      key: test-govinfo-api-key
   
   ollama:
     base-url: http://localhost:11434

@@ -5,7 +5,6 @@ import com.legistrack.entity.*
 import com.legistrack.repository.*
 import com.legistrack.service.external.CongressApiService
 import com.legistrack.service.external.OllamaService
-import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -19,6 +18,8 @@ class DataIngestionService(
     private val ollamaService: OllamaService,
     private val documentRepository: DocumentRepository,
     private val sponsorRepository: SponsorRepository,
+    private val documentSponsorRepository: DocumentSponsorRepository,
+    private val documentActionRepository: DocumentActionRepository,
     private val aiAnalysisRepository: AiAnalysisRepository
 ) {
     
@@ -54,7 +55,7 @@ class DataIngestionService(
         return totalIngested
     }
     
-    private suspend fun processBill(congressBill: CongressBill): Boolean {
+    suspend fun processBill(congressBill: CongressBill): Boolean {
         val billId = "${congressBill.type}${congressBill.number}-${congressBill.congress}"
         
         // Check if bill already exists
@@ -117,17 +118,24 @@ class DataIngestionService(
     }
     
     private fun processSponsors(document: Document, cosponsors: List<CongressCosponsor>) {
-        for (cosponsor in cosponsors) {
+        for ((index, cosponsor) in cosponsors.withIndex()) {
             cosponsor.bioguideId?.let { bioguideId ->
                 val sponsor = findOrCreateSponsor(cosponsor)
                 val sponsorDate = cosponsor.sponsorshipDate?.let { 
                     LocalDate.parse(it, DateTimeFormatter.ISO_LOCAL_DATE) 
                 }
                 
-                // Create document sponsor relationship
-                // Note: This would need to be implemented with proper JPA relationships
-                // For now, we'll log the sponsor data
-                logger.debug("Processing sponsor: {} for document {}", bioguideId, document.billId)
+                // Create document sponsor relationship if it doesn't exist
+                if (!documentSponsorRepository.existsByDocumentIdAndSponsorId(document.id!!, sponsor.id!!)) {
+                    val documentSponsor = DocumentSponsor(
+                        document = document,
+                        sponsor = sponsor,
+                        isPrimarySponsor = index == 0, // First sponsor is typically primary
+                        sponsorDate = sponsorDate
+                    )
+                    documentSponsorRepository.save(documentSponsor)
+                    logger.debug("Saved sponsor relationship: {} for document {}", bioguideId, document.billId)
+                }
             }
         }
     }
@@ -151,10 +159,28 @@ class DataIngestionService(
     private fun processActions(document: Document, actions: List<CongressDetailedAction>) {
         for (action in actions) {
             action.actionDate?.let { dateStr ->
-                val actionDate = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE)
-                // Create document action
-                // Note: This would need proper entity creation and saving
-                logger.debug("Processing action for document {}: {}", document.billId, action.text)
+                try {
+                    val actionDate = LocalDate.parse(dateStr, DateTimeFormatter.ISO_LOCAL_DATE)
+                    val actionText = action.text ?: "No action text available"
+                    
+                    // Check if action already exists to avoid duplicates
+                    if (!documentActionRepository.existsByDocumentIdAndActionDateAndActionText(
+                            document.id!!, actionDate, actionText)) {
+                        
+                        val documentAction = DocumentAction(
+                            document = document,
+                            actionDate = actionDate,
+                            actionType = action.type,
+                            actionText = actionText,
+                            chamber = action.chamber,
+                            actionCode = action.actionCode
+                        )
+                        documentActionRepository.save(documentAction)
+                        logger.debug("Saved action for document {}: {}", document.billId, actionText)
+                    }
+                } catch (e: Exception) {
+                    logger.warn("Failed to parse action date {} for document {}", dateStr, document.billId)
+                }
             }
         }
     }

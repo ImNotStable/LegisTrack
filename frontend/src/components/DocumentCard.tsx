@@ -7,24 +7,29 @@ interface DocumentCardProps {
 }
 
 export const DocumentCard: React.FC<DocumentCardProps> = ({ document }) => {
-  // Calculate gradient based on party breakdown
+  // Calculate gradient based on party breakdown (top-left to bottom-right)
   const getPartyGradient = () => {
-    const { democraticPercentage, republicanPercentage } = document.partyBreakdown;
+    const { democraticPercentage, republicanPercentage, total } = document.partyBreakdown;
     
-    if (democraticPercentage === 0 && republicanPercentage === 0) {
-      return 'bg-gradient-to-r from-gray-50 to-gray-50';
+    // Default colorless state when no sponsors
+    if (total === 0 || (democraticPercentage === 0 && republicanPercentage === 0)) {
+      return '';
     }
     
-    // Create a more subtle gradient
-    const blueWeight = democraticPercentage / 100;
-    const redWeight = republicanPercentage / 100;
+    // Calculate gradient intensity based on political support
+    const demIntensity = Math.min(Math.max(democraticPercentage, 10), 90);
+    const repIntensity = Math.min(Math.max(republicanPercentage, 10), 90);
     
-    if (blueWeight > redWeight) {
-      return `bg-gradient-to-r from-blue-50 via-blue-25 to-red-25`;
-    } else if (redWeight > blueWeight) {
-      return `bg-gradient-to-r from-red-50 via-red-25 to-blue-25`;
+    // Create blue to purple to red gradient from top-left to bottom-right
+    if (democraticPercentage > republicanPercentage) {
+      // More Democratic support: blue → purple → light red
+      return `bg-gradient-to-br from-blue-${Math.round(demIntensity / 20) * 100} via-purple-300 to-red-200`;
+    } else if (republicanPercentage > democraticPercentage) {
+      // More Republican support: light blue → purple → red
+      return `bg-gradient-to-br from-blue-200 via-purple-300 to-red-${Math.round(repIntensity / 20) * 100}`;
     } else {
-      return 'bg-gradient-to-r from-purple-50 to-purple-50';
+      // Equal support: balanced purple gradient
+      return 'bg-gradient-to-br from-purple-300 via-purple-400 to-purple-300';
     }
   };
 
@@ -68,26 +73,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document }) => {
           </div>
         )}
         
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-gray-600">
-            <span className="font-medium">Sponsors:</span>{' '}
-            <span className="text-blue-600">{document.partyBreakdown.democratic}D</span>
-            {' / '}
-            <span className="text-red-600">{document.partyBreakdown.republican}R</span>
-            {document.partyBreakdown.independent > 0 && (
-              <>
-                {' / '}
-                <span className="text-green-600">{document.partyBreakdown.independent}I</span>
-              </>
-            )}
-            {document.partyBreakdown.other > 0 && (
-              <>
-                {' / '}
-                <span className="text-gray-600">{document.partyBreakdown.other} Other</span>
-              </>
-            )}
-          </div>
-          
+        <div className="flex justify-end items-center">
           <div className="flex items-center space-x-2">
             {document.hasValidAnalysis ? (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
