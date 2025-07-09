@@ -1,0 +1,126 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: legistrack-postgres
+    environment:
+      POSTGRES_DB: legistrack
+      POSTGRES_USER: legistrack
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-legistrack_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - legistrack-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: legistrack-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - legistrack-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  # Ollama AI Service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: legistrack-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    networks:
+      - legistrack-network
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+
+  # Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: legistrack-backend
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DATABASE_URL=${DATABASE_URL:-jdbc:postgresql://postgres:5432/legistrack}
+      - DATABASE_USERNAME=${DATABASE_USERNAME:-legistrack}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-legistrack_password}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - CONGRESS_API_KEY=${CONGRESS_API_KEY}
+      - GOVINFO_API_KEY=${GOVINFO_API_KEY}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+      - ollama
+    networks:
+      - legistrack-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: legistrack-frontend
+    environment:
+      - REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-http://localhost:8080/api}
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - legistrack-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+        reservations:
+          memory: 128M
+          cpus: '0.25'
+
+volumes:
+  postgres_data:
+  ollama_data:
+
+networks:
+  legistrack-network:
+    driver: bridge

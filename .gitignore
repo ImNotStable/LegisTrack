@@ -1,0 +1,166 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build outputs
+build/
+dist/
+target/
+out/
+*/build/
+*/dist/
+*/target/
+*/out/
+backend/build/
+backend/build-cache/
+backend/.gradle/
+backend/.kotlin/
+frontend/build/
+frontend/dist/
+frontend/node_modules/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.iml
+*.ipr
+*.iws
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+gradle-wrapper.properties.backup
+build-cache/
+backend/.gradle/
+backend/build/
+backend/build-cache/
+backend/gradle-app.setting
+
+# Kotlin
+.kotlin/
+*.kt.class
+*.kotlin_module
+backend/.kotlin/
+backend/**/*.kt.class
+backend/**/*.kotlin_module
+
+# Spring Boot
+application-local.properties
+application-*.properties
+!application.properties
+!application-docker.properties
+backend/application-local.properties
+backend/src/main/resources/application-*.properties
+!backend/src/main/resources/application.properties
+!backend/src/main/resources/application-docker.properties
+
+# Frontend specific
+.eslintcache
+/coverage
+.nyc_output
+.next/
+.nuxt/
+.cache/
+.parcel-cache/
+frontend/.eslintcache
+frontend/coverage/
+frontend/.nyc_output
+frontend/.next/
+frontend/.cache/
+frontend/.parcel-cache/
+frontend/node_modules/
+
+# React/TypeScript
+*.tsbuildinfo
+.npm
+.yarn-integrity
+frontend/*.tsbuildinfo
+frontend/.npm
+frontend/.yarn-integrity
+
+# Testing
+junit.xml
+coverage/
+*.lcov
+.nyc_output/
+backend/build/reports/
+backend/build/test-results/
+frontend/coverage/
+frontend/junit.xml
+frontend/*.lcov
+
+# Backup files
+*.bak
+*.backup
+*.orig
+*.rej
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Native binaries
+*.so
+*.dylib
+*.dll
+
+# JVM crash logs
+hs_err_pid*
+replay_pid*
+
+# Package files
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+!gradle-wrapper.jar
+!backend/gradle/wrapper/gradle-wrapper.jar
+backend/build/libs/
+backend/**/*.jar
+backend/**/*.war
+
+# Maven (if used)
+.mvn/
+mvnw
+mvnw.cmd
+
+# TestContainers
+.testcontainers/
