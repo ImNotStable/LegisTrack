@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/api';
-import { DocumentSummary, Page } from '../types';
+import { DocumentSummary, DocumentDetail, Page } from '../types';
 
 export const useDocuments = (
   page: number = 0,
@@ -12,6 +12,15 @@ export const useDocuments = (
     queryKey: ['documents', page, size, sortBy, sortDir],
     queryFn: () => apiService.getDocuments(page, size, sortBy, sortDir),
     staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+};
+
+export const useDocumentById = (id: number) => {
+  return useQuery<DocumentDetail>({
+    queryKey: ['document', id],
+    queryFn: () => apiService.getDocumentById(id),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: !!id, // Only run query if id is provided
   });
 };
 

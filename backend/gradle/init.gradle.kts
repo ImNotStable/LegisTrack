@@ -61,7 +61,7 @@ allprojects {
 gradle.taskGraph.whenReady {
     allTasks.forEach { task ->
         if (task is org.gradle.api.tasks.compile.JavaCompile) {
-            task.options.compilerArgs.addAll(listOf("-Xlint:none", "-nowarn"))
+            task.options.compilerArgs.addAll(listOf("-Xlint:all", "-Xlint:-processing"))
         }
     }
 }

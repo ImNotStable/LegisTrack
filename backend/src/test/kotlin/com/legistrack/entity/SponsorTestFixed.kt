@@ -1,7 +1,11 @@
 package com.legistrack.entity
 
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.*
 import java.time.LocalDateTime
 
 /**
@@ -9,7 +13,6 @@ import java.time.LocalDateTime
  * Tests entity creation, validation, and property assignments.
  */
 class SponsorTestFixed {
-
     @Test
     fun `should create sponsor with required fields`() {
         val sponsor = Sponsor(bioguideId = "S000123")
@@ -29,18 +32,19 @@ class SponsorTestFixed {
     @Test
     fun `should create sponsor with all fields`() {
         val now = LocalDateTime.now()
-        
-        val sponsor = Sponsor(
-            id = 1L,
-            bioguideId = "S000123",
-            firstName = "John",
-            lastName = "Doe",
-            party = "D",
-            state = "CA",
-            district = "12",
-            createdAt = now,
-            updatedAt = now
-        )
+
+        val sponsor =
+            Sponsor(
+                id = 1L,
+                bioguideId = "S000123",
+                firstName = "John",
+                lastName = "Doe",
+                party = "D",
+                state = "CA",
+                district = "12",
+                createdAt = now,
+                updatedAt = now,
+            )
 
         assertEquals(1L, sponsor.id)
         assertEquals("S000123", sponsor.bioguideId)
@@ -55,20 +59,23 @@ class SponsorTestFixed {
 
     @Test
     fun `should handle different party affiliations`() {
-        val democraticSponsor = Sponsor(
-            bioguideId = "D000123",
-            party = "D"
-        )
-        
-        val republicanSponsor = Sponsor(
-            bioguideId = "R000123",
-            party = "R"
-        )
-        
-        val independentSponsor = Sponsor(
-            bioguideId = "I000123",
-            party = "I"
-        )
+        val democraticSponsor =
+            Sponsor(
+                bioguideId = "D000123",
+                party = "D",
+            )
+
+        val republicanSponsor =
+            Sponsor(
+                bioguideId = "R000123",
+                party = "R",
+            )
+
+        val independentSponsor =
+            Sponsor(
+                bioguideId = "I000123",
+                party = "I",
+            )
 
         assertEquals("D", democraticSponsor.party)
         assertEquals("R", republicanSponsor.party)
@@ -77,17 +84,19 @@ class SponsorTestFixed {
 
     @Test
     fun `should handle house vs senate members`() {
-        val houseMember = Sponsor(
-            bioguideId = "H000123",
-            state = "CA",
-            district = "12"
-        )
-        
-        val senateMember = Sponsor(
-            bioguideId = "S000123",
-            state = "CA",
-            district = null
-        )
+        val houseMember =
+            Sponsor(
+                bioguideId = "H000123",
+                state = "CA",
+                district = "12",
+            )
+
+        val senateMember =
+            Sponsor(
+                bioguideId = "S000123",
+                state = "CA",
+                district = null,
+            )
 
         assertEquals("12", houseMember.district)
         assertNull(senateMember.district)

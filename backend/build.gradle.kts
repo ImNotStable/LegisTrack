@@ -8,6 +8,7 @@ plugins {
     kotlin("plugin.noarg") version "2.1.0"
     id("org.graalvm.buildtools.native") version "0.10.4"
     id("org.springframework.boot.aot") version "3.4.0"
+    id("org.jlleitschuh.gradle.ktlint") version "13.0.0"
 }
 
 group = "com.legistrack"
@@ -41,29 +42,32 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.springframework.boot:spring-boot-starter-quartz")
-    
+
+    // Logging (SLF4J provider)
+    implementation("org.springframework.boot:spring-boot-starter-logging")
+
     // Database
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
-    
+
     // Redis
     implementation("io.lettuce:lettuce-core")
-    
+
     // JSON Processing
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
-    
+
     // Kotlin Support
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
-    
+
     // Development
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
-    
+
     // Testing
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
         exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
@@ -98,13 +102,15 @@ tasks {
                 "-opt-in=kotlin.RequiresOptIn",
                 "-Xno-param-assertions",
                 "-Xno-call-assertions",
-                "-Xno-receiver-assertions"
+                "-Xno-receiver-assertions",
+                "-Werror",
             )
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
             languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_1)
             apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_1)
             progressiveMode = true
-            allWarningsAsErrors = false
+            allWarningsAsErrors = true
+            suppressWarnings = false
         }
     }
 
@@ -122,10 +128,12 @@ tasks {
     withType<JavaCompile> {
         options.isFork = true
         options.isIncremental = true
-        options.compilerArgs.addAll(listOf(
-            "-Xlint:none",
-            "-nowarn"
-        ))
+        options.compilerArgs.addAll(
+            listOf(
+                "-Xlint:all",
+                "-Xlint:-processing",
+            ),
+        )
     }
 
     // AOT processing optimization
@@ -144,7 +152,7 @@ kotlin {
             "-Xjvm-default=all",
             "-Xno-param-assertions",
             "-Xno-call-assertions",
-            "-Xno-receiver-assertions"
+            "-Xno-receiver-assertions",
         )
         progressiveMode = true
         suppressWarnings = true
@@ -186,10 +194,6 @@ noArg {
 
 // Build optimization configurations
 configurations.all {
-    // Exclude transitive dependencies that slow down builds
-    exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
-    exclude(group = "ch.qos.logback", module = "logback-classic")
-    
     // Cache dependency resolution
     resolutionStrategy.cacheChangingModulesFor(0, "seconds")
     resolutionStrategy.cacheDynamicVersionsFor(0, "seconds")

@@ -15,7 +15,7 @@ import java.time.LocalDateTime
 
 /**
  * Entity representing an AI analysis of a legislative document.
- * 
+ *
  * @property id Unique identifier for the analysis
  * @property document The document this analysis belongs to
  * @property generalEffectText AI-generated general effect summary
@@ -33,37 +33,27 @@ data class AiAnalysis(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "document_id", nullable = false)
     val document: Document,
-
     @Column(name = "general_effect_text", columnDefinition = "TEXT")
     val generalEffectText: String? = null,
-
     @Column(name = "economic_effect_text", columnDefinition = "TEXT")
     val economicEffectText: String? = null,
-
     @JdbcTypeCode(SqlTypes.ARRAY)
     @Column(name = "industry_tags", columnDefinition = "text[]")
     val industryTags: Array<String> = emptyArray(),
-
     @Column(name = "is_valid")
     val isValid: Boolean = true,
-
     @Column(name = "analysis_date")
     val analysisDate: LocalDateTime = LocalDateTime.now(),
-
     @Column(name = "model_used", length = 100)
     val modelUsed: String? = null,
-
     @Column(name = "created_at")
     val createdAt: LocalDateTime = LocalDateTime.now(),
-
     @Column(name = "updated_at")
-    val updatedAt: LocalDateTime = LocalDateTime.now()
+    val updatedAt: LocalDateTime = LocalDateTime.now(),
 ) {
-    
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false

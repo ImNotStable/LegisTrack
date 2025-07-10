@@ -26,14 +26,14 @@ rootProject.name = "legistrack-backend"
 gradle.startParameter.apply {
     // Enable parallel builds
     isParallelProjectExecutionEnabled = true
-    
+
     // Configure build cache
-    isBuildCacheEnabled = true
-    
+    isBuildCacheEnabled = false
+
     // Optimize console output
     consoleOutput = ConsoleOutput.Plain
     logLevel = LogLevel.LIFECYCLE
-    
+
     // Set max workers
     maxWorkerCount = Runtime.getRuntime().availableProcessors()
 }

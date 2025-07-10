@@ -11,7 +11,6 @@ import org.springframework.test.context.ActiveProfiles
 @SpringBootTest
 @ActiveProfiles("test")
 class LegisTrackApplicationTestFixed {
-
     @Test
     fun `application context should load successfully`() {
         // This test will pass if the Spring Boot application context loads without errors

@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.EnableScheduling
 
 /**
  * Main application class for LegisTrack.
- * 
+ *
  * This Spring Boot application provides automated U.S. legislation tracking
  * and AI-powered analysis capabilities.
  */

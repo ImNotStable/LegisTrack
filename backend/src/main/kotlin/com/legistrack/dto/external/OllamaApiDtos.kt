@@ -8,7 +8,7 @@ data class OllamaGenerateRequest(
     val model: String,
     val prompt: String,
     val stream: Boolean = false,
-    val options: OllamaOptions? = null
+    val options: OllamaOptions? = null,
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -22,7 +22,7 @@ data class OllamaGenerateResponse(
     val promptEvalCount: Int? = null,
     val promptEvalDuration: Long? = null,
     val evalCount: Int? = null,
-    val evalDuration: Long? = null
+    val evalDuration: Long? = null,
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -30,12 +30,12 @@ data class OllamaOptions(
     val temperature: Double? = null,
     val topP: Double? = null,
     val topK: Int? = null,
-    val numCtx: Int? = null
+    val numCtx: Int? = null,
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class OllamaTagsResponse(
-    val models: List<OllamaModel> = emptyList()
+    val models: List<OllamaModel> = emptyList(),
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -43,5 +43,5 @@ data class OllamaModel(
     val name: String,
     val modifiedAt: String? = null,
     val size: Long? = null,
-    val digest: String? = null
+    val digest: String? = null,
 )

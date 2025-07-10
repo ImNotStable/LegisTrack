@@ -3,6 +3,19 @@ module.exports = {
   content: [
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
+  safelist: [
+    // Political gradient classes for party support visualization
+    'bg-gradient-to-br',
+    'from-red-400',
+    'via-red-300', 
+    'to-red-200',
+    'from-blue-400',
+    'via-blue-300',
+    'to-blue-200',
+    'from-purple-400',
+    'via-purple-300',
+    'to-purple-200'
+  ],
   theme: {
     extend: {
       colors: {

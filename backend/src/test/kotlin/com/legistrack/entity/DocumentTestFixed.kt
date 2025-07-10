@@ -1,7 +1,11 @@
 package com.legistrack.entity
 
+import org.junit.jupiter.api.Assertions.assertDoesNotThrow
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.*
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -10,13 +14,13 @@ import java.time.LocalDateTime
  * Tests entity creation, validation, and property assignments.
  */
 class DocumentTestFixed {
-
     @Test
     fun `should create document with required fields`() {
-        val document = Document(
-            billId = "HR1234-118",
-            title = "Test Bill Title"
-        )
+        val document =
+            Document(
+                billId = "HR1234-118",
+                title = "Test Bill Title",
+            )
 
         assertEquals("HR1234-118", document.billId)
         assertEquals("Test Bill Title", document.title)
@@ -38,20 +42,21 @@ class DocumentTestFixed {
     fun `should create document with all fields`() {
         val now = LocalDateTime.now()
         val introDate = LocalDate.now().minusDays(30)
-        
-        val document = Document(
-            id = 1L,
-            billId = "S456-118",
-            title = "Comprehensive Test Act",
-            officialSummary = "This is a test bill summary",
-            introductionDate = introDate,
-            congressSession = 118,
-            billType = "S",
-            fullTextUrl = "https://congress.gov/bill/text",
-            status = "Introduced",
-            createdAt = now,
-            updatedAt = now
-        )
+
+        val document =
+            Document(
+                id = 1L,
+                billId = "S456-118",
+                title = "Comprehensive Test Act",
+                officialSummary = "This is a test bill summary",
+                introductionDate = introDate,
+                congressSession = 118,
+                billType = "S",
+                fullTextUrl = "https://congress.gov/bill/text",
+                status = "Introduced",
+                createdAt = now,
+                updatedAt = now,
+            )
 
         assertEquals(1L, document.id)
         assertEquals("S456-118", document.billId)
@@ -68,15 +73,17 @@ class DocumentTestFixed {
 
     @Test
     fun `should handle data class equality correctly`() {
-        val document1 = Document(
-            billId = "HR1234-118",
-            title = "Test Bill"
-        )
-        
-        val document2 = Document(
-            billId = "HR1234-118",
-            title = "Test Bill"
-        )
+        val document1 =
+            Document(
+                billId = "HR1234-118",
+                title = "Test Bill",
+            )
+
+        val document2 =
+            Document(
+                billId = "HR1234-118",
+                title = "Test Bill",
+            )
 
         assertEquals(document1.billId, document2.billId)
         assertEquals(document1.title, document2.title)
@@ -84,10 +91,11 @@ class DocumentTestFixed {
 
     @Test
     fun `should maintain immutability of entity`() {
-        val document = Document(
-            billId = "HR1234-118",
-            title = "Test Bill"
-        )
+        val document =
+            Document(
+                billId = "HR1234-118",
+                title = "Test Bill",
+            )
 
         assertDoesNotThrow {
             document.billId

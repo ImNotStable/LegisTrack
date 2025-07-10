@@ -11,7 +11,7 @@ data class DocumentSummaryDto(
     val status: String?,
     val industryTags: List<String> = emptyList(),
     val partyBreakdown: PartyBreakdownDto,
-    val hasValidAnalysis: Boolean
+    val hasValidAnalysis: Boolean,
 )
 
 data class DocumentDetailDto(
@@ -29,7 +29,7 @@ data class DocumentDetailDto(
     val analysis: AiAnalysisDto?,
     val partyBreakdown: PartyBreakdownDto,
     val createdAt: LocalDateTime,
-    val updatedAt: LocalDateTime
+    val updatedAt: LocalDateTime,
 )
 
 data class SponsorDto(
@@ -41,7 +41,7 @@ data class SponsorDto(
     val state: String?,
     val district: String?,
     val isPrimarySponsor: Boolean,
-    val sponsorDate: LocalDate?
+    val sponsorDate: LocalDate?,
 )
 
 data class DocumentActionDto(
@@ -50,7 +50,7 @@ data class DocumentActionDto(
     val actionType: String?,
     val actionText: String,
     val chamber: String?,
-    val actionCode: String?
+    val actionCode: String?,
 )
 
 data class AiAnalysisDto(
@@ -60,7 +60,7 @@ data class AiAnalysisDto(
     val industryTags: List<String> = emptyList(),
     val isValid: Boolean,
     val analysisDate: LocalDateTime,
-    val modelUsed: String?
+    val modelUsed: String?,
 )
 
 data class PartyBreakdownDto(
@@ -70,9 +70,9 @@ data class PartyBreakdownDto(
     val other: Int = 0,
     val total: Int = 0,
     val democraticPercentage: Double = 0.0,
-    val republicanPercentage: Double = 0.0
+    val republicanPercentage: Double = 0.0,
 )
 
 data class InvalidateAnalysisRequest(
-    val analysisId: Long
+    val analysisId: Long,
 )

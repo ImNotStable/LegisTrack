@@ -1,40 +1,48 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DocumentSummary } from '../types';
 import { formatShortDate, getIndustryTagColor, truncateText } from '../utils';
+
+// Tailwind safelist comment: bg-gradient-to-br from-red-400 via-red-300 to-red-200 from-blue-400 via-blue-300 to-blue-200 from-purple-400 via-purple-300 to-purple-200 from-red-100 to-white from-blue-100 to-white from-purple-100 to-white
 
 interface DocumentCardProps {
   document: DocumentSummary;
 }
 
 export const DocumentCard: React.FC<DocumentCardProps> = ({ document }) => {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    navigate(`/document/${document.id}`);
+  };
+
   // Calculate gradient based on party breakdown (top-left to bottom-right)
   const getPartyGradient = () => {
     const { democraticPercentage, republicanPercentage, total } = document.partyBreakdown;
     
-    // Default colorless state when no sponsors
-    if (total === 0 || (democraticPercentage === 0 && republicanPercentage === 0)) {
+    // Only apply color if more than 10 people support the document
+    if (total <= 10) {
       return '';
     }
     
-    // Calculate gradient intensity based on political support
-    const demIntensity = Math.min(Math.max(democraticPercentage, 10), 90);
-    const repIntensity = Math.min(Math.max(republicanPercentage, 10), 90);
-    
-    // Create blue to purple to red gradient from top-left to bottom-right
-    if (democraticPercentage > republicanPercentage) {
-      // More Democratic support: blue → purple → light red
-      return `bg-gradient-to-br from-blue-${Math.round(demIntensity / 20) * 100} via-purple-300 to-red-200`;
-    } else if (republicanPercentage > democraticPercentage) {
-      // More Republican support: light blue → purple → red
-      return `bg-gradient-to-br from-blue-200 via-purple-300 to-red-${Math.round(repIntensity / 20) * 100}`;
+    // Apply color based on political support thresholds
+    if (republicanPercentage > 66) {
+      // Strong Republican support: subtle red gradient
+      return 'bg-gradient-to-br from-red-100 to-white';
+    } else if (democraticPercentage > 66) {
+      // Strong Democratic support: subtle blue gradient
+      return 'bg-gradient-to-br from-blue-100 to-white';
     } else {
-      // Equal support: balanced purple gradient
-      return 'bg-gradient-to-br from-purple-300 via-purple-400 to-purple-300';
+      // Mixed or moderate support: subtle purple gradient
+      return 'bg-gradient-to-br from-purple-100 to-white';
     }
   };
 
   return (
-    <div className={`card p-6 mb-4 ${getPartyGradient()} border border-gray-200 transition-all duration-200`}>
+    <div 
+      className={`card p-6 mb-4 ${getPartyGradient()} border border-gray-200 transition-all duration-200 cursor-pointer hover:shadow-lg transform hover:scale-[1.02]`}
+      onClick={handleClick}
+    >
         <div className="flex justify-between items-start mb-3">
           <h3 className="text-lg font-semibold text-gray-900 flex-1 mr-4">
             {truncateText(document.title, 120)}

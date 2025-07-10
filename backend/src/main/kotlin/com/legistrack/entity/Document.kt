@@ -14,7 +14,7 @@ import java.time.LocalDateTime
 
 /**
  * Entity representing a U.S. legislative document.
- * 
+ *
  * @property id Unique identifier for the document
  * @property billId Congressional bill identifier (e.g., "HR1234-118")
  * @property title Official title of the legislation
@@ -36,43 +36,30 @@ data class Document(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
-
     @Column(name = "bill_id", unique = true, nullable = false, length = 50)
     val billId: String,
-
     @Column(nullable = false, columnDefinition = "TEXT")
     val title: String,
-
     @Column(name = "official_summary", columnDefinition = "TEXT")
     val officialSummary: String? = null,
-
     @Column(name = "introduction_date")
     val introductionDate: LocalDate? = null,
-
     @Column(name = "congress_session")
     val congressSession: Int? = null,
-
     @Column(name = "bill_type", length = 20)
     val billType: String? = null,
-
     @Column(name = "full_text_url", length = 500)
     val fullTextUrl: String? = null,
-
     @Column(length = 100)
     val status: String? = null,
-
     @Column(name = "created_at")
     val createdAt: LocalDateTime = LocalDateTime.now(),
-
     @Column(name = "updated_at")
     val updatedAt: LocalDateTime = LocalDateTime.now(),
-
     @OneToMany(mappedBy = "document", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
-    val sponsors: List<DocumentSponsor> = emptyList(),
-
+    val sponsors: Set<DocumentSponsor> = emptySet(),
     @OneToMany(mappedBy = "document", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
-    val actions: List<DocumentAction> = emptyList(),
-
+    val actions: Set<DocumentAction> = emptySet(),
     @OneToMany(mappedBy = "document", cascade = [CascadeType.ALL], fetch = FetchType.LAZY)
-    val analyses: List<AiAnalysis> = emptyList()
+    val analyses: Set<AiAnalysis> = emptySet(),
 )

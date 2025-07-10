@@ -6,9 +6,13 @@ import com.legistrack.repository.DocumentRepository
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 
@@ -17,7 +21,6 @@ import org.springframework.data.domain.PageRequest
  * Tests service logic, DTO conversion, and repository interactions.
  */
 class DocumentServiceTestFixed {
-
     private lateinit var documentRepository: DocumentRepository
     private lateinit var aiAnalysisRepository: AiAnalysisRepository
     private lateinit var documentService: DocumentService
@@ -31,11 +34,12 @@ class DocumentServiceTestFixed {
 
     @Test
     fun `should get all documents with pagination`() {
-        val document = Document(
-            id = 1L,
-            billId = "HR1234-118",
-            title = "Test Bill"
-        )
+        val document =
+            Document(
+                id = 1L,
+                billId = "HR1234-118",
+                title = "Test Bill",
+            )
         val page = PageImpl(listOf(document))
         val pageable = PageRequest.of(0, 10)
 
@@ -51,12 +55,13 @@ class DocumentServiceTestFixed {
 
     @Test
     fun `should get document by ID`() {
-        val document = Document(
-            id = 1L,
-            billId = "HR1234-118",
-            title = "Test Bill",
-            officialSummary = "Test summary"
-        )
+        val document =
+            Document(
+                id = 1L,
+                billId = "HR1234-118",
+                title = "Test Bill",
+                officialSummary = "Test summary",
+            )
 
         every { documentRepository.findByIdWithDetails(1L) } returns document
 

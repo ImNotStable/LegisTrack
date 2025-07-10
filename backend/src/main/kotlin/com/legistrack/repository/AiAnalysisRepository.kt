@@ -8,14 +8,19 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface AiAnalysisRepository : JpaRepository<AiAnalysis, Long> {
-    
     fun findByDocumentId(documentId: Long): List<AiAnalysis>
-    
-    fun findByDocumentIdAndIsValid(documentId: Long, isValid: Boolean): List<AiAnalysis>
-    
+
+    fun findByDocumentIdAndIsValid(
+        documentId: Long,
+        isValid: Boolean,
+    ): List<AiAnalysis>
+
     @Modifying
     @Query("UPDATE AiAnalysis a SET a.isValid = false WHERE a.id = :analysisId")
     fun invalidateAnalysis(analysisId: Long): Int
-    
-    fun existsByDocumentIdAndIsValid(documentId: Long, isValid: Boolean): Boolean
+
+    fun existsByDocumentIdAndIsValid(
+        documentId: Long,
+        isValid: Boolean,
+    ): Boolean
 }
