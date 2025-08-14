@@ -44,6 +44,8 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: legistrack-ollama
+    profiles:
+      - ai
     ports:
       - "11434:11434"
     volumes:
@@ -89,7 +91,6 @@ services:
     depends_on:
       - postgres
       - redis
-      - ollama
     networks:
       - legistrack-network
     deploy:
