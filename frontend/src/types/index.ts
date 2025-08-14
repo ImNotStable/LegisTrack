@@ -102,3 +102,61 @@ export interface ApiResponse<T> {
   message: string;
   data?: T;
 }
+
+export interface Document {
+  id: string;
+  title: string;
+  summary: string;
+  congress: number;
+  type: string;
+  number: string;
+  originChamber: string;
+  introducedDate: string;
+  latestActionDate: string;
+  latestActionText: string;
+  url: string;
+  sponsorName?: string;
+  sponsorParty?: string;
+  sponsorState?: string;
+  subjects: string[];
+  aiSummary?: string;
+  aiKeyPoints?: string[];
+  impactScore?: number;
+  controversyLevel?: 'LOW' | 'MEDIUM' | 'HIGH';
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+  numberOfElements: number;
+}
+
+export interface ApiError {
+  message: string;
+  status?: number;
+  timestamp?: string;
+}
+
+export interface DocumentFilters {
+  congress?: number;
+  type?: string;
+  chamber?: string;
+  subject?: string;
+  sponsor?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export interface SearchParams {
+  query?: string;
+  page?: number;
+  size?: number;
+  sortBy?: string;
+  sortDir?: 'asc' | 'desc';
+  filters?: DocumentFilters;
+}

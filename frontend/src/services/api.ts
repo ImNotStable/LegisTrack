@@ -1,22 +1,35 @@
 import { DocumentSummary, DocumentDetail, Page, ApiResponse } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
 class ApiService {
-  private async fetchWithErrorHandling<T>(url: string, options?: RequestInit): Promise<T> {
-    const response = await fetch(`${API_BASE_URL}${url}`, {
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
-        ...options?.headers,
+        ...options.headers,
       },
       ...options,
-    });
+    };
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    try {
+      const response = await fetch(url, config);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error(`API request failed: ${endpoint}`, error);
+      throw error;
     }
-
-    return response.json();
   }
 
   async getDocuments(
@@ -25,30 +38,59 @@ class ApiService {
     sortBy: string = 'introductionDate',
     sortDir: string = 'desc'
   ): Promise<Page<DocumentSummary>> {
-    const params = new URLSearchParams({
-      page: page.toString(),
-      size: size.toString(),
-      sortBy,
-      sortDir,
+    return this.request<Page<DocumentSummary>>(
+      `/documents?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`
+    );
+  }
+
+  async getDocumentById(id: string): Promise<DocumentDetail> {
+    return this.request<DocumentDetail>(`/documents/${id}`);
+  }
+
+  async searchDocuments(
+    query: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<Page<DocumentSummary>> {
+    const encodedQuery = encodeURIComponent(query);
+    return this.request<Page<DocumentSummary>>(
+      `/documents/search?q=${encodedQuery}&page=${page}&size=${size}`
+    );
+  }
+
+  async getDocumentsByTag(
+    tag: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<Page<DocumentSummary>> {
+    const encodedTag = encodeURIComponent(tag);
+    return this.request<Page<DocumentSummary>>(
+      `/documents/tag/${encodedTag}?page=${page}&size=${size}`
+    );
+  }
+
+  async getAnalyticsSummary(): Promise<{
+    totalDocuments: number;
+    documentsWithAnalysis: number;
+    avgDemocraticSponsorship: number;
+    avgRepublicanSponsorship: number;
+    topIndustryTags: Array<{ tag: string; count: number }>;
+  }> {
+    return this.request('/analytics/summary');
+  }
+
+  async refreshDocument(id: string): Promise<ApiResponse<DocumentDetail>> {
+    return this.request<ApiResponse<DocumentDetail>>(`/documents/${id}/refresh`, {
+      method: 'POST',
     });
-
-    return this.fetchWithErrorHandling<Page<DocumentSummary>>(
-      `/documents?${params}`
-    );
   }
 
-  async getDocumentById(id: number): Promise<DocumentDetail> {
-    return this.fetchWithErrorHandling<DocumentDetail>(
-      `/documents/${id}`
-    );
-  }
-
-  async triggerDataIngestion(fromDate?: string): Promise<ApiResponse<any>> {
-    const params = fromDate ? `?fromDate=${fromDate}` : '';
-    return this.fetchWithErrorHandling<ApiResponse<any>>(`/documents/ingest${params}`, {
+  async analyzeDocument(id: string): Promise<ApiResponse<DocumentDetail>> {
+    return this.request<ApiResponse<DocumentDetail>>(`/documents/${id}/analyze`, {
       method: 'POST',
     });
   }
 }
 
 export const apiService = new ApiService();
+export default apiService;

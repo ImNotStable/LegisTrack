@@ -1,14 +1,14 @@
 plugins {
-    id("org.springframework.boot") version "3.4.0"
-    id("io.spring.dependency-management") version "1.1.6"
-    kotlin("jvm") version "2.1.0"
-    kotlin("plugin.spring") version "2.1.0"
-    kotlin("plugin.jpa") version "2.1.0"
-    kotlin("plugin.allopen") version "2.1.0"
-    kotlin("plugin.noarg") version "2.1.0"
-    id("org.graalvm.buildtools.native") version "0.10.4"
-    id("org.springframework.boot.aot") version "3.4.0"
-    id("org.jlleitschuh.gradle.ktlint") version "13.0.0"
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.plugin.spring)
+    alias(libs.plugins.kotlin.plugin.jpa)
+    alias(libs.plugins.kotlin.plugin.allopen)
+    alias(libs.plugins.kotlin.plugin.noarg)
+    alias(libs.plugins.graalvm.native)
+    alias(libs.plugins.spring.boot.aot)
+    alias(libs.plugins.ktlint)
 }
 
 group = "com.legistrack"
@@ -34,50 +34,36 @@ repositories {
 }
 
 dependencies {
-    // Spring Boot Starters
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-data-redis")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
-    implementation("org.springframework.boot:spring-boot-starter-actuator")
-    implementation("org.springframework.boot:spring-boot-starter-webflux")
-    implementation("org.springframework.boot:spring-boot-starter-quartz")
+    // Spring
+    implementation(libs.bundles.spring.starters)
 
-    // Logging (SLF4J provider)
-    implementation("org.springframework.boot:spring-boot-starter-logging")
-
-    // Database
-    runtimeOnly("org.postgresql:postgresql")
-    implementation("org.flywaydb:flyway-core")
-    implementation("org.flywaydb:flyway-database-postgresql")
-
-    // Redis
-    implementation("io.lettuce:lettuce-core")
-
-    // JSON Processing
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+    // JSON
+    implementation(libs.bundles.jackson)
 
     // Kotlin Support
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
+    implementation(libs.bundles.kotlin)
+
+    // Database
+    implementation(libs.bundles.db)
+    runtimeOnly(libs.postgresql)
+
+    // Redis
+    implementation(libs.bundles.redis)
 
     // Development
-    developmentOnly("org.springframework.boot:spring-boot-devtools")
-    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
+    developmentOnly(libs.spring.boot.devtools)
+    annotationProcessor(libs.spring.boot.config.processor)
 
     // Testing
-    testImplementation("org.springframework.boot:spring-boot-starter-test") {
+    testImplementation(libs.spring.boot.starter.test) {
         exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
     }
-    testImplementation("org.testcontainers:postgresql")
-    testImplementation("org.testcontainers:junit-jupiter")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
-    testImplementation("io.mockk:mockk:1.13.13")
-    testImplementation("com.ninja-squad:springmockk:4.0.2")
-    testRuntimeOnly("com.h2database:h2")
+    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.junit.jupiter)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
+    testImplementation(libs.springmockk)
+    testRuntimeOnly(libs.h2)
 }
 
 tasks {
@@ -202,8 +188,8 @@ configurations.all {
 // Dependency management optimization
 dependencyManagement {
     imports {
-        mavenBom("org.springframework.cloud:spring-cloud-dependencies:2024.0.0")
-        mavenBom("org.testcontainers:testcontainers-bom:1.20.4")
+        mavenBom("org.springframework.cloud:spring-cloud-dependencies:${libs.versions.spring.cloud.get()}")
+        mavenBom("org.testcontainers:testcontainers-bom:${libs.versions.testcontainers.bom.get()}")
     }
 }
 

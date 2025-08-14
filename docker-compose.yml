@@ -60,7 +60,14 @@ services:
         reservations:
           memory: 1G
           cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
+  # Ollama Model Loader - Automatically pulls the required model
   # Backend Service
   backend:
     build:

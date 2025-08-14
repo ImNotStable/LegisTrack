@@ -2,6 +2,28 @@
 
 This file documents all significant changes to the LegisTrack project. All entries are in reverse chronological order (newest first).
 
+## 2025-07-10 18:25 - [REFACTOR] Removed Ollama model loader, backend now handles AI service initialization
+- Files: backend/src/main/kotlin/com/legistrack/service/external/OllamaService.kt, backend/src/main/kotlin/com/legistrack/dto/external/OllamaApiDtos.kt, backend/src/main/kotlin/com/legistrack/controller/TestController.kt, docker-compose.yml
+- Issue: User requested removal of separate ollama-model-loader container and implementation of backend-driven model download with service availability waiting
+- Changes: 
+  * Removed ollama-model-loader service from docker-compose.yml
+  * Added OllamaPullRequest and OllamaPullResponse DTOs for model download API
+  * Enhanced OllamaService with initializeOllamaService() method triggered on ApplicationReadyEvent
+  * Added waitForOllamaService(), ensureModelAvailable(), downloadModel(), and waitForModelDownload() methods
+  * Implemented service readiness checking with isServiceReady flag and public getter
+  * Updated generateAnalysis() to check service readiness before processing requests
+  * Added /api/test/ollama-status endpoint for monitoring AI service initialization status
+  * Backend now waits up to 10 minutes for Ollama service and 30 minutes for model download
+- Impact: Simplified container orchestration by removing dedicated model loader. Backend now takes full responsibility for ensuring AI service availability and model presence. Provides better visibility into initialization status through dedicated API endpoint. Eliminates race conditions between model loading and backend startup.
+- Developer: AI Assistant
+- Reason: User wanted to consolidate AI service management into the backend application rather than using separate initialization containers
+
+## 2025-07-10 16:55 - [REFACTOR] Simplified introduction date display format
+- Files: frontend/src/utils/index.ts, frontend/src/components/DocumentCard.tsx, frontend/src/components/DocumentDetail.tsx
+- Issue: User requested removal of "Introduced:" label text and change to simple mm/dd/yyyy format in italic gray
+- Changes: Added formatSimpleDate() utility function that returns mm/dd/yyyy format. Updated DocumentCard and DocumentDetail components to remove "Introduced:" prefix and display only the date in italicized gray text (text-gray-500 italic)
+- Impact: Cleaner, more minimalist date display across document cards and detail pages. Date format changed from "Introduced: Jan 15, 2025" to italic gray "01/15/2025"
+
 ## 2025-07-10 04:15 - [REFACTOR] Removed SEO and public website elements for private system
 - Affected: frontend/public/index.html, frontend/public/manifest.json (deleted)
 - Impact: Cleaned up HTML by removing SEO-oriented meta tags including description, theme-color, apple-touch-icon, and PWA manifest references. Deleted manifest.json file as PWA functionality is not needed for a private legislation tracking system. Simplified index.html to essential meta tags only (charset, viewport) while maintaining core functionality. This reduces overhead and focuses the system on its private use case.
