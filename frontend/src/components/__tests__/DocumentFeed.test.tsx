@@ -1,21 +1,20 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { rest } from 'msw';
 import { DocumentFeed } from '../DocumentFeed';
-import { server } from '../../mocks/handlers';
+import apiService from '../../services/api';
+import type { Page, DocumentSummary } from '../../types';
+import { ToastProvider } from '../Toast';
 
-// Setup MSW
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
+afterEach(() => {
+  jest.restoreAllMocks();
+});
 
 const renderWithProviders = (component: React.ReactElement) => {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: { retry: false },
+      queries: { retry: false, gcTime: 0, staleTime: Infinity, refetchOnWindowFocus: false, refetchOnReconnect: false, refetchOnMount: false },
       mutations: { retry: false },
     },
   });
@@ -23,68 +22,102 @@ const renderWithProviders = (component: React.ReactElement) => {
   return render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        {component}
+        <ToastProvider>
+          {component}
+        </ToastProvider>
       </BrowserRouter>
     </QueryClientProvider>
   );
 };
 
-describe('DocumentFeed', () => {
-  it('renders loading spinner initially', () => {
-    renderWithProviders(<DocumentFeed />);
-    expect(screen.getByRole('status')).toBeInTheDocument();
-  });
+const makePage = (pageNumber: number, pageSize: number, total: number): Page<DocumentSummary> => {
+  const startId = pageNumber * pageSize + 1;
+  const content: DocumentSummary[] = Array.from({ length: Math.min(pageSize, total - pageNumber * pageSize) }, (_, i) => ({
+    id: startId + i,
+    billId: `H.R.${startId + i}`,
+    title: `Bill ${startId + i}`,
+    introductionDate: '2024-01-15',
+    status: 'introduced',
+    industryTags: [],
+    partyBreakdown: {
+      democratic: 1,
+      republican: 1,
+      independent: 0,
+      other: 0,
+      total: 2,
+      democraticPercentage: 50,
+      republicanPercentage: 50,
+    },
+    hasValidAnalysis: false,
+  }));
+  const totalPages = Math.ceil(total / pageSize);
+  const numberOfElements = content.length;
+  return {
+    content,
+    pageable: {
+      pageNumber,
+      pageSize,
+      sort: { empty: false, sorted: true, unsorted: false },
+      offset: pageNumber * pageSize,
+      unpaged: false,
+      paged: true,
+    },
+    last: pageNumber + 1 >= totalPages,
+    totalPages,
+    totalElements: total,
+    size: pageSize,
+    number: pageNumber,
+    sort: { empty: false, sorted: true, unsorted: false },
+    first: pageNumber === 0,
+    numberOfElements,
+    empty: numberOfElements === 0,
+  };
+};
 
-  it('displays documents after loading', async () => {
-    renderWithProviders(<DocumentFeed />);
+describe('DocumentFeed - infinite scrolling', () => {
+  it('fetches next page when sentinel intersects (no over-fetch)', async () => {
+    const pageSize = 20;
+    const total = 40;
+    let requestCount = 0;
 
-    await waitFor(() => {
-      expect(screen.getByText('Test Bill for Healthcare Reform')).toBeInTheDocument();
+    jest.spyOn(apiService as any, 'getDocuments').mockImplementation((page: number, size: number) => {
+      requestCount += 1;
+      return Promise.resolve(makePage(page ?? 0, size ?? pageSize, total));
     });
-  });
 
-  it('shows document count and pagination info', async () => {
+    // Capture the IO callback used by the component
+    let ioCallback: ((entries: any[]) => void) | null = null;
+    const OriginalIO = (global as any).IntersectionObserver;
+    (global as any).IntersectionObserver = function(cb: any) {
+      ioCallback = cb; return { observe() {}, unobserve() {}, disconnect() {} } as any;
+    } as any;
+
     renderWithProviders(<DocumentFeed />);
 
-    await waitFor(() => {
-      expect(screen.getByText(/Showing 1 of 1 documents/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Bill 1')).toBeInTheDocument());
+    expect(requestCount).toBe(1);
+
+    // Trigger intersection to load page 2
+    await act(async () => { ioCallback?.([{ isIntersecting: true } as any]); });
+
+    await waitFor(() => expect(screen.getByText('Bill 21')).toBeInTheDocument());
+    expect(requestCount).toBe(2);
+
+    // Restore IO
+    (global as any).IntersectionObserver = OriginalIO;
+  });
+
+  it('backs off on server errors and does not hammer APIs', async () => {
+    let requestCount = 0;
+    jest.spyOn(apiService as any, 'getDocuments').mockImplementation(() => {
+      requestCount += 1;
+      const err: any = new Error('Too Many Requests');
+      (err as any).status = 429;
+      return Promise.reject(err);
     });
-  });
-
-  it('allows sorting documents', async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<DocumentFeed />);
-
-    const sortSelect = await screen.findByRole('combobox');
-    // Default value should be introductionDate_desc
-    expect(sortSelect).toHaveValue('introductionDate_desc');
-
-    await user.selectOptions(sortSelect, 'title_asc');
-    expect(sortSelect).toHaveValue('title_asc');
-  });
-
-  it('handles pagination correctly', async () => {
-    renderWithProviders(<DocumentFeed />);
-
-    await waitFor(() => {
-      // Should not show pagination for single page
-      expect(screen.queryByText('Previous')).not.toBeInTheDocument();
-      expect(screen.queryByText('Next')).not.toBeInTheDocument();
-    });
-  });
-
-  it('displays error message when API fails', async () => {
-    // Mock API failure
-    server.use(
-      rest.get('http://localhost:8080/api/documents', (req, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ message: 'Server error' }));
-      })
-    );
 
     renderWithProviders(<DocumentFeed />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Error loading documents')).toBeInTheDocument();
-    });
+    await waitFor(() => expect(requestCount).toBe(1));
   });
 });

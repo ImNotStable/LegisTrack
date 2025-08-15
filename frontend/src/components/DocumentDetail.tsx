@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeftIcon,
   CalendarIcon,
-  TagIcon,
   UserGroupIcon,
   ClockIcon,
   DocumentTextIcon,
@@ -14,14 +13,18 @@ import {
 import { CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/solid';
 import { useDocument, useRefreshDocument, useAnalyzeDocument } from '../hooks/useApi';
 import { LoadingSpinner } from './LoadingSpinner';
+import { useToast } from './Toast';
+import { useState } from 'react';
 
 export const DocumentDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const { data: document, isLoading, error } = useDocument(id!);
+  const { data: document, isLoading, error, refetch } = useDocument(id!);
   const refreshMutation = useRefreshDocument();
   const analyzeMutation = useAnalyzeDocument();
+  const toast = useToast();
+  const [, setIsPolling] = useState(false);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Unknown';
@@ -43,13 +46,51 @@ export const DocumentDetail: React.FC = () => {
 
   const handleRefresh = () => {
     if (id) {
-      refreshMutation.mutate(id);
+      refreshMutation.mutate(id, {
+        onSuccess: () => toast.success('Document refreshed.'),
+        onError: () => toast.error('Failed to refresh document.'),
+      });
     }
   };
 
   const handleAnalyze = () => {
     if (id) {
-      analyzeMutation.mutate(id);
+      const toastId = toast.info('Starting AI analysis...', { durationMs: 0 });
+      analyzeMutation.mutate(id, {
+        onSuccess: () => {
+          toast.dismiss(toastId);
+          const pollingToast = toast.info('Analyzing... this may take up to a minute.', { durationMs: 0 });
+          setIsPolling(true);
+          const maxAttempts = 20;
+          let attempts = 0;
+          const poll = async () => {
+            attempts += 1;
+            try {
+              const result = await refetch();
+              if (result.data && (result.data as any).analysis) {
+                toast.dismiss(pollingToast);
+                toast.success('AI analysis completed.');
+                setIsPolling(false);
+                return;
+              }
+            } catch (_e) {
+              // ignore and keep polling
+            }
+            if (attempts < maxAttempts) {
+              setTimeout(poll, 3000);
+            } else {
+              toast.dismiss(pollingToast);
+              toast.warning('Analysis is taking longer than expected. It will appear when ready.');
+              setIsPolling(false);
+            }
+          };
+          setTimeout(poll, 2000);
+        },
+        onError: (e) => {
+          toast.dismiss(toastId);
+          toast.error('AI analysis failed.');
+        },
+      });
     }
   };
 
@@ -157,7 +198,7 @@ export const DocumentDetail: React.FC = () => {
               className="inline-flex items-center text-sm text-blue-600 hover:text-blue-500"
             >
               <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-1" />
-              View Full Text on Congress.gov
+              {document.fullTextUrl.includes('congress.gov') ? 'View Full Text on Congress.gov' : 'View Full Text'}
             </a>
           </div>
         )}
@@ -187,7 +228,7 @@ export const DocumentDetail: React.FC = () => {
                 />
                 <div
                   className="bg-green-500"
-                  style={{ width: `${100 - democraticPercentage - republicanPercentage}%` }}
+                  style={{ width: `${Math.max(0, 100 - democraticPercentage - republicanPercentage)}%` }}
                 />
               </div>
             </div>

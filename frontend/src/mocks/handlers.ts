@@ -100,11 +100,11 @@ const mockPage: Page<DocumentSummary> = {
 
 // API handlers
 export const handlers = [
-  rest.get('http://localhost:8080/api/documents', (req, res, ctx) => {
+  rest.get('/api/documents', (req, res, ctx) => {
     return res(ctx.status(200), ctx.json(mockPage));
   }),
 
-  rest.get('http://localhost:8080/api/documents/:id', (req, res, ctx) => {
+  rest.get('/api/documents/:id', (req, res, ctx) => {
     const { id } = req.params;
     if (id === '1') {
       return res(ctx.status(200), ctx.json(mockDocumentDetail));
@@ -112,25 +112,25 @@ export const handlers = [
     return res(ctx.status(404), ctx.json({ message: 'Document not found' }));
   }),
 
-  rest.post('http://localhost:8080/api/documents/:id/refresh', (req, res, ctx) => {
+  rest.post('/api/documents/:id/refresh', (req, res, ctx) => {
     return res(
       ctx.status(200),
       ctx.json({ success: true, message: 'Document refreshed', data: mockDocumentDetail })
     );
   }),
 
-  rest.post('http://localhost:8080/api/documents/:id/analyze', (req, res, ctx) => {
+  rest.post('/api/documents/:id/analyze', (req, res, ctx) => {
     return res(
       ctx.status(200),
       ctx.json({ success: true, message: 'Document analyzed', data: mockDocumentDetail })
     );
   }),
 
-  rest.get('http://localhost:8080/api/documents/search', (req, res, ctx) => {
+  rest.get('/api/documents/search', (req, res, ctx) => {
     return res(ctx.status(200), ctx.json(mockPage));
   }),
 
-  rest.get('http://localhost:8080/api/analytics/summary', (req, res, ctx) => {
+  rest.get('/api/analytics/summary', (req, res, ctx) => {
     return res(
       ctx.status(200),
       ctx.json({

@@ -10,7 +10,6 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.CrossOrigin
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -22,7 +21,6 @@ import java.time.LocalDate
 
 @RestController
 @RequestMapping("/api/documents")
-@CrossOrigin(origins = ["http://localhost:3000"])
 class DocumentController(
     private val documentService: DocumentService,
     private val dataIngestionService: DataIngestionService,
@@ -57,6 +55,28 @@ class DocumentController(
         } else {
             ResponseEntity.notFound().build()
         }
+    }
+
+    @GetMapping("/search")
+    fun searchDocuments(
+        @RequestParam("q") query: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+    ): ResponseEntity<Page<DocumentSummaryDto>> {
+        val pageable = PageRequest.of(page, size, Sort.by("introductionDate").descending())
+        val results = documentService.searchDocuments(query, pageable)
+        return ResponseEntity.ok(results)
+    }
+
+    @GetMapping("/tag/{tag}")
+    fun getDocumentsByTag(
+        @PathVariable tag: String,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+    ): ResponseEntity<Page<DocumentSummaryDto>> {
+        val pageable = PageRequest.of(page, size, Sort.by("introductionDate").descending())
+        val results = documentService.findByIndustryTag(tag, pageable)
+        return ResponseEntity.ok(results)
     }
 
     @PostMapping("/analysis/invalidate")
@@ -108,5 +128,26 @@ class DocumentController(
                     "message" to "Data ingestion failed: ${e.message}",
                 ),
             )
+        }
+
+    @PostMapping("/{id}/refresh")
+    fun refreshDocument(
+        @PathVariable id: Long,
+        @RequestParam(defaultValue = "false") reanalyze: Boolean,
+    ): ResponseEntity<Map<String, Any>> =
+        try {
+            runBlocking { dataIngestionService.refreshDocument(id, reanalyze) }
+            ResponseEntity.ok(mapOf("success" to true))
+        } catch (e: Exception) {
+            ResponseEntity.internalServerError().body(mapOf("success" to false, "message" to (e.message ?: "error")))
+        }
+
+    @PostMapping("/{id}/analyze")
+    fun analyzeDocument(@PathVariable id: Long): ResponseEntity<DocumentDetailDto> =
+        try {
+            val analyzed = runBlocking { documentService.analyzeDocument(id) }
+            if (analyzed != null) ResponseEntity.ok(analyzed) else ResponseEntity.notFound().build()
+        } catch (e: Exception) {
+            ResponseEntity.internalServerError().build()
         }
 }

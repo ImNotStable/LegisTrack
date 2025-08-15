@@ -11,6 +11,7 @@ import com.legistrack.entity.Document
 import com.legistrack.entity.DocumentAction
 import com.legistrack.entity.DocumentSponsor
 import com.legistrack.repository.AiAnalysisRepository
+import com.legistrack.service.external.OllamaService
 import com.legistrack.repository.DocumentRepository
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional
 class DocumentService(
     private val documentRepository: DocumentRepository,
     private val aiAnalysisRepository: AiAnalysisRepository,
+    private val ollamaService: OllamaService,
 ) {
     /**
      * Retrieves all documents with pagination.
@@ -62,6 +64,130 @@ class DocumentService(
 
             document.toSummaryDto(sponsors, analyses)
         }
+    }
+
+    @Transactional(readOnly = true)
+    fun searchDocuments(query: String, pageable: Pageable): Page<DocumentSummaryDto> {
+        val pageOfDocs = documentRepository.searchDocuments(query, pageable)
+        return pageOfDocs.map { document ->
+            val documentId = requireNotNull(document.id)
+            val sponsors = try { documentRepository.findSponsorsByDocumentId(documentId) } catch (_: Exception) { emptyList() }
+            val analyses = try { documentRepository.findAnalysesByDocumentId(documentId) } catch (_: Exception) { emptyList() }
+            document.toSummaryDto(sponsors, analyses)
+        }
+    }
+
+    @Transactional(readOnly = true)
+    fun findByIndustryTag(tag: String, pageable: Pageable): Page<DocumentSummaryDto> {
+        val pageOfDocs = documentRepository.findByIndustryTag(tag, pageable)
+        return pageOfDocs.map { document ->
+            val documentId = requireNotNull(document.id)
+            val sponsors = try { documentRepository.findSponsorsByDocumentId(documentId) } catch (_: Exception) { emptyList() }
+            val analyses = try { documentRepository.findAnalysesByDocumentId(documentId) } catch (_: Exception) { emptyList() }
+            document.toSummaryDto(sponsors, analyses)
+        }
+    }
+
+    @Transactional(readOnly = true)
+    fun getAnalyticsSummary(): Map<String, Any> {
+        val totalDocuments = documentRepository.count()
+        val documentsWithAnalysis = aiAnalysisRepository.countDocumentsWithValidAnalysis()
+
+        // Compute average party breakdown across all documents using summaries page by page
+        val pageSize = 500
+        var democraticAccum = 0.0
+        var republicanAccum = 0.0
+        var counted = 0
+
+        var pageIndex = 0
+        while (true) {
+            val page = documentRepository.findAllWithValidAnalyses(org.springframework.data.domain.PageRequest.of(pageIndex, pageSize))
+            if (page.isEmpty) break
+            page.forEach { d ->
+                val id = requireNotNull(d.id)
+                val sponsors = try { documentRepository.findSponsorsByDocumentId(id) } catch (_: Exception) { emptyList() }
+                val analyses = try { documentRepository.findAnalysesByDocumentId(id) } catch (_: Exception) { emptyList() }
+                val summary = d.toSummaryDto(sponsors, analyses)
+                democraticAccum += summary.partyBreakdown.democraticPercentage
+                republicanAccum += summary.partyBreakdown.republicanPercentage
+                counted += 1
+            }
+            if (page.isLast) break
+            pageIndex += 1
+        }
+
+        val avgDem = if (counted > 0) democraticAccum / counted else 0.0
+        val avgRep = if (counted > 0) republicanAccum / counted else 0.0
+
+        // Top industry tags from valid analyses
+        val tagCounts = mutableMapOf<String, Int>()
+        aiAnalysisRepository.findAll().asSequence()
+            .filter { it.isValid }
+            .flatMap { it.industryTags.asSequence() }
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .forEach { tag -> tagCounts[tag] = (tagCounts[tag] ?: 0) + 1 }
+
+        val topIndustryTags = tagCounts.entries
+            .sortedByDescending { it.value }
+            .take(10)
+            .map { mapOf("tag" to it.key, "count" to it.value) }
+
+        return mapOf(
+            "totalDocuments" to totalDocuments,
+            "documentsWithAnalysis" to documentsWithAnalysis,
+            "avgDemocraticSponsorship" to avgDem,
+            "avgRepublicanSponsorship" to avgRep,
+            "topIndustryTags" to topIndustryTags,
+        )
+    }
+
+    /**
+     * Generates AI analysis for a document and persists it.
+     */
+    suspend fun analyzeDocument(id: Long): DocumentDetailDto? {
+        val document = documentRepository.findByIdWithDetails(id) ?: return null
+
+        // Ensure model is available
+        if (!ollamaService.isModelAvailable()) {
+            return getDocumentById(id)
+        }
+
+        val generalEffect =
+            ollamaService.generateGeneralEffectAnalysis(
+                document.title,
+                document.officialSummary,
+            )
+
+        val economicEffect =
+            ollamaService.generateEconomicEffectAnalysis(
+                document.title,
+                document.officialSummary,
+            )
+
+        val industryTags =
+            ollamaService.generateIndustryTags(
+                document.title,
+                document.officialSummary,
+            )
+
+        val hasContent =
+            !generalEffect.isNullOrBlank() || !economicEffect.isNullOrBlank() || industryTags.isNotEmpty()
+
+        if (hasContent) {
+            aiAnalysisRepository.save(
+                AiAnalysis(
+                    document = document,
+                    generalEffectText = generalEffect,
+                    economicEffectText = economicEffect,
+                    industryTags = industryTags.toTypedArray(),
+                    isValid = true,
+                    modelUsed = "gpt-oss:20b",
+                ),
+            )
+        }
+
+        return getDocumentById(id)
     }
 
     /**

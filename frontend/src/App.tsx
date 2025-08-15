@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DocumentFeed } from './components/DocumentFeed';
+import { ToastProvider } from './components/Toast';
 import { DocumentDetail } from './components/DocumentDetail';
 
 // Create a client
@@ -17,6 +18,7 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <ToastProvider>
       <Router>
         <div className="min-h-screen bg-gray-50">
           <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -61,6 +63,7 @@ function App() {
           </footer>
         </div>
       </Router>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

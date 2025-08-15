@@ -3,6 +3,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: legistrack-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: legistrack
       POSTGRES_USER: legistrack
@@ -14,6 +15,11 @@ services:
       - ./backend/src/main/resources/db/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - legistrack-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     deploy:
       resources:
         limits:
@@ -27,10 +33,16 @@ services:
   redis:
     image: redis:7-alpine
     container_name: legistrack-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     networks:
       - legistrack-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     deploy:
       resources:
         limits:
@@ -44,8 +56,7 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: legistrack-ollama
-    profiles:
-      - ai
+    restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
@@ -76,8 +87,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: legistrack-backend
+    restart: unless-stopped
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost,http://localhost:80}
       - DATABASE_URL=${DATABASE_URL:-jdbc:postgresql://postgres:5432/legistrack}
       - DATABASE_USERNAME=${DATABASE_USERNAME:-legistrack}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD:-legistrack_password}
@@ -86,13 +99,23 @@ services:
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
       - CONGRESS_API_KEY=${CONGRESS_API_KEY}
       - GOVINFO_API_KEY=${GOVINFO_API_KEY}
+      - JAVA_TOOL_OPTIONS=-Duser.timezone=UTC
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
     networks:
       - legistrack-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
     deploy:
       resources:
         limits:
@@ -108,12 +131,14 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: legistrack-frontend
+    restart: unless-stopped
     environment:
-      - REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-http://localhost:8080/api}
+      - REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL:-/api}
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - legistrack-network
     deploy:

@@ -13,6 +13,9 @@ import com.legistrack.dto.external.CongressReportsResponse
 import com.legistrack.dto.external.CongressSummariesResponse
 import com.legistrack.dto.external.CongressTextVersionsResponse
 import com.legistrack.dto.external.CongressTreatiesResponse
+import com.fasterxml.jackson.databind.ObjectMapper
+import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.cache.annotation.Cacheable
@@ -27,6 +30,7 @@ import java.time.format.DateTimeFormatter
 @Service
 class CongressApiService(
     private val webClient: WebClient,
+    private val objectMapper: ObjectMapper,
     @Value("\${app.congress.api.key}") private val apiKey: String,
     @Value("\${app.congress.api.base-url}") private val baseUrl: String,
 ) {
@@ -36,7 +40,7 @@ class CongressApiService(
         private const val RETRY_DELAY_SECONDS = 2L
     }
 
-    @Cacheable("congress-bills", key = "#fromDate.toString() + '_' + #offset + '_' + #limit")
+    @Cacheable("congress-bills")
     suspend fun getRecentBills(
         fromDate: LocalDate,
         offset: Int = 0,
@@ -65,15 +69,15 @@ class CongressApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(CongressBillsResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: CongressBillsResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching bills from Congress API", e)
             CongressBillsResponse()
         }
     }
 
-    @Cacheable("congress-bill-details", key = "#congress + '_' + #billType + '_' + #billNumber")
+    @Cacheable("congress-bill-details")
     suspend fun getBillDetails(
         congress: Int,
         billType: String,
@@ -98,24 +102,19 @@ class CongressApiService(
                     .uri(uri)
                     .retrieve()
                     .bodyToMono(Map::class.java)
-                    .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                    .block() as? Map<String, Any>
+                    .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                    .awaitSingleOrNull() as? Map<String, Any>
 
             @Suppress("UNCHECKED_CAST")
             val billData = response?.get("bill") as? Map<String, Any>
-            if (billData != null) {
-                // Convert to CongressBill object manually or use ObjectMapper
-                parseCongressBill(billData)
-            } else {
-                null
-            }
+            billData?.let { objectMapper.convertValue(it, CongressBill::class.java) }
         } catch (e: Exception) {
             logger.error("Error fetching bill details from Congress API", e)
             null
         }
     }
 
-    @Cacheable("congress-cosponsors", key = "#congress + '_' + #billType + '_' + #billNumber")
+    @Cacheable("congress-cosponsors")
     suspend fun getBillCosponsors(
         congress: Int,
         billType: String,
@@ -139,15 +138,15 @@ class CongressApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(CongressCosponsorsResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: CongressCosponsorsResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching cosponsors from Congress API", e)
             CongressCosponsorsResponse()
         }
     }
 
-    @Cacheable("congress-actions", key = "#congress + '_' + #billType + '_' + #billNumber")
+    @Cacheable("congress-actions")
     suspend fun getBillActions(
         congress: Int,
         billType: String,
@@ -171,8 +170,8 @@ class CongressApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(CongressActionsResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: CongressActionsResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching actions from Congress API", e)
             CongressActionsResponse()
@@ -192,7 +191,7 @@ class CongressApiService(
     }
 
     // Amendment endpoints
-    @Cacheable("congress-amendments", key = "#congress + '_' + #offset + '_' + #limit")
+    @Cacheable("congress-amendments")
     suspend fun getAmendments(
         congress: Int,
         offset: Int = 0,
@@ -217,15 +216,15 @@ class CongressApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(CongressAmendmentsResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: CongressAmendmentsResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching amendments from Congress API", e)
             CongressAmendmentsResponse()
         }
     }
 
-    @Cacheable("congress-amendment-details", key = "#congress + '_' + #amendmentType + '_' + #amendmentNumber")
+    @Cacheable("congress-amendment-details")
     suspend fun getAmendmentDetails(
         congress: Int,
         amendmentType: String,
@@ -250,16 +249,12 @@ class CongressApiService(
                     .uri(uri)
                     .retrieve()
                     .bodyToMono(Map::class.java)
-                    .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                    .block() as? Map<String, Any>
+                    .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                    .awaitSingleOrNull() as? Map<String, Any>
 
             @Suppress("UNCHECKED_CAST")
             val amendmentData = response?.get("amendment") as? Map<String, Any>
-            if (amendmentData != null) {
-                parseCongressAmendment(amendmentData)
-            } else {
-                null
-            }
+            amendmentData?.let { objectMapper.convertValue(it, CongressAmendment::class.java) }
         } catch (e: Exception) {
             logger.error("Error fetching amendment details from Congress API", e)
             null
@@ -267,7 +262,7 @@ class CongressApiService(
     }
 
     // Summary endpoints
-    @Cacheable("congress-summaries", key = "#congress + '_' + #billType + '_' + #billNumber")
+    @Cacheable("congress-summaries")
     suspend fun getBillSummaries(
         congress: Int,
         billType: String,
@@ -290,8 +285,8 @@ class CongressApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(CongressSummariesResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: CongressSummariesResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching summaries from Congress API", e)
             CongressSummariesResponse()
@@ -299,27 +294,35 @@ class CongressApiService(
     }
 
     // Member endpoints
-    @Cacheable("congress-members", key = "#congress + '_' + #chamber + '_' + #offset + '_' + #limit")
+    @Cacheable("congress-members")
     suspend fun getMembers(
         congress: Int,
         chamber: String? = null,
         offset: Int = 0,
         limit: Int = 20,
     ): CongressMembersResponse {
-        val uriBuilder =
-            UriComponentsBuilder
-                .fromUriString(baseUrl)
-                .path("/member/{congress}")
-                .queryParam("api_key", apiKey)
-                .queryParam("format", "json")
-                .queryParam("limit", limit)
-                .queryParam("offset", offset)
-
-        if (chamber != null) {
-            uriBuilder.queryParam("currentMember", "true")
-        }
-
-        val uri = uriBuilder.buildAndExpand(congress).toUri()
+        val uri =
+            if (chamber != null) {
+                UriComponentsBuilder
+                    .fromUriString(baseUrl)
+                    .path("/member/{congress}/{chamber}")
+                    .queryParam("api_key", apiKey)
+                    .queryParam("format", "json")
+                    .queryParam("limit", limit)
+                    .queryParam("offset", offset)
+                    .buildAndExpand(congress, chamber.lowercase())
+                    .toUri()
+            } else {
+                UriComponentsBuilder
+                    .fromUriString(baseUrl)
+                    .path("/member/{congress}")
+                    .queryParam("api_key", apiKey)
+                    .queryParam("format", "json")
+                    .queryParam("limit", limit)
+                    .queryParam("offset", offset)
+                    .buildAndExpand(congress)
+                    .toUri()
+            }
 
         logger.debug("Fetching members from Congress API: {}", uri)
 
@@ -329,15 +332,15 @@ class CongressApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(CongressMembersResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: CongressMembersResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching members from Congress API", e)
             CongressMembersResponse()
         }
     }
 
-    @Cacheable("congress-member-details", key = "#bioguideId")
+    @Cacheable("congress-member-details")
     suspend fun getMemberDetails(bioguideId: String): CongressMember? {
         val uri =
             UriComponentsBuilder
@@ -358,16 +361,12 @@ class CongressApiService(
                     .uri(uri)
                     .retrieve()
                     .bodyToMono(Map::class.java)
-                    .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                    .block() as? Map<String, Any>
+                    .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                    .awaitSingleOrNull() as? Map<String, Any>
 
             @Suppress("UNCHECKED_CAST")
             val memberData = response?.get("member") as? Map<String, Any>
-            if (memberData != null) {
-                parseCongressMember(memberData)
-            } else {
-                null
-            }
+            memberData?.let { objectMapper.convertValue(it, CongressMember::class.java) }
         } catch (e: Exception) {
             logger.error("Error fetching member details from Congress API", e)
             null
@@ -375,7 +374,7 @@ class CongressApiService(
     }
 
     // Committee Report endpoints
-    @Cacheable("congress-reports", key = "#congress + '_' + #reportType + '_' + #offset + '_' + #limit")
+    @Cacheable("congress-reports")
     suspend fun getCommitteeReports(
         congress: Int,
         reportType: String? = null,
@@ -405,8 +404,8 @@ class CongressApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(CongressReportsResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: CongressReportsResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching committee reports from Congress API", e)
             CongressReportsResponse()
@@ -414,7 +413,7 @@ class CongressApiService(
     }
 
     // Nomination endpoints
-    @Cacheable("congress-nominations", key = "#congress + '_' + #offset + '_' + #limit")
+    @Cacheable("congress-nominations")
     suspend fun getNominations(
         congress: Int,
         offset: Int = 0,
@@ -439,8 +438,8 @@ class CongressApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(CongressNominationsResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: CongressNominationsResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching nominations from Congress API", e)
             CongressNominationsResponse()
@@ -448,7 +447,7 @@ class CongressApiService(
     }
 
     // Treaty endpoints
-    @Cacheable("congress-treaties", key = "#congress + '_' + #offset + '_' + #limit")
+    @Cacheable("congress-treaties")
     suspend fun getTreaties(
         congress: Int,
         offset: Int = 0,
@@ -473,8 +472,8 @@ class CongressApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(CongressTreatiesResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: CongressTreatiesResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching treaties from Congress API", e)
             CongressTreatiesResponse()
@@ -482,7 +481,7 @@ class CongressApiService(
     }
 
     // Text Version endpoints
-    @Cacheable("congress-text-versions", key = "#congress + '_' + #billType + '_' + #billNumber")
+    @Cacheable("congress-text-versions")
     suspend fun getBillTextVersions(
         congress: Int,
         billType: String,
@@ -505,8 +504,8 @@ class CongressApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(CongressTextVersionsResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: CongressTextVersionsResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching text versions from Congress API", e)
             CongressTextVersionsResponse()
@@ -515,23 +514,8 @@ class CongressApiService(
 
     // Helper parsing methods
     private fun parseCongressAmendment(amendmentData: Map<String, Any>): CongressAmendment =
-        CongressAmendment(
-            congress = amendmentData["congress"] as? Int,
-            number = amendmentData["number"] as? String,
-            type = amendmentData["type"] as? String,
-            purpose = amendmentData["purpose"] as? String,
-            description = amendmentData["description"] as? String,
-            submittedDate = amendmentData["submittedDate"] as? String,
-        )
+        objectMapper.convertValue(amendmentData, CongressAmendment::class.java)
 
     private fun parseCongressMember(memberData: Map<String, Any>): CongressMember =
-        CongressMember(
-            bioguideId = memberData["bioguideId"] as? String,
-            firstName = memberData["firstName"] as? String,
-            lastName = memberData["lastName"] as? String,
-            middleName = memberData["middleName"] as? String,
-            party = memberData["party"] as? String,
-            state = memberData["state"] as? String,
-            district = memberData["district"] as? String,
-        )
+        objectMapper.convertValue(memberData, CongressMember::class.java)
 }

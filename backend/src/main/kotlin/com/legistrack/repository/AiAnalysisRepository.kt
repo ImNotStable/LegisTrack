@@ -23,4 +23,7 @@ interface AiAnalysisRepository : JpaRepository<AiAnalysis, Long> {
         documentId: Long,
         isValid: Boolean,
     ): Boolean
+
+    @Query("SELECT COUNT(DISTINCT a.document.id) FROM AiAnalysis a WHERE a.isValid = true")
+    fun countDocumentsWithValidAnalysis(): Long
 }

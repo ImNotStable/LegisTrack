@@ -3,6 +3,7 @@ import { DocumentCard } from './DocumentCard';
 import { LoadingSpinner } from './LoadingSpinner';
 import { useDocuments } from '../hooks/useApi';
 import { debounce } from '../utils';
+import type { Page, DocumentSummary } from '../types';
 
 export const DocumentFeed: React.FC = memo(() => {
   const [page, setPage] = useState(0);
@@ -21,11 +22,12 @@ export const DocumentFeed: React.FC = memo(() => {
 
   // Memoize the pagination info to prevent recalculation
   const paginationInfo = useMemo(() => {
-    if (!data) return null;
+    const d = data as unknown as Page<DocumentSummary> | undefined;
+    if (!d) return null;
     return {
-      showingText: `Showing ${data.numberOfElements} of ${data.totalElements} documents`,
-      pageText: data.totalPages > 1 ? ` (Page ${data.number + 1} of ${data.totalPages})` : '',
-      showPagination: data.totalPages > 1,
+      showingText: `Showing ${d.numberOfElements} of ${d.totalElements} documents`,
+      pageText: d.totalPages > 1 ? ` (Page ${d.number + 1} of ${d.totalPages})` : '',
+      showPagination: d.totalPages > 1,
     };
   }, [data]);
 
@@ -111,7 +113,7 @@ export const DocumentFeed: React.FC = memo(() => {
 
       {/* Document List */}
       <div className="space-y-4" role="main" aria-label="Document list">
-        {data?.content.map((document) => (
+        {(data as unknown as Page<DocumentSummary> | undefined)?.content.map((document) => (
           <DocumentCard key={document.id} document={document} />
         ))}
       </div>
@@ -121,7 +123,7 @@ export const DocumentFeed: React.FC = memo(() => {
         <nav className="mt-8 flex justify-center items-center space-x-2" aria-label="Pagination">
           <button
             onClick={handlePreviousPage}
-            disabled={data?.first || isFetching}
+            disabled={(data as unknown as Page<DocumentSummary> | undefined)?.first || isFetching}
             className="btn btn-secondary disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             aria-label="Go to previous page"
           >
@@ -129,12 +131,15 @@ export const DocumentFeed: React.FC = memo(() => {
           </button>
           
           <span className="text-sm text-gray-600 px-4" aria-live="polite">
-            Page {(data?.number ?? 0) + 1} of {data?.totalPages ?? 1}
+            {(() => {
+              const d = data as unknown as Page<DocumentSummary> | undefined;
+              return `Page ${((d?.number ?? 0) + 1)} of ${d?.totalPages ?? 1}`;
+            })()}
           </span>
           
           <button
             onClick={handleNextPage}
-            disabled={data?.last || isFetching}
+            disabled={(data as unknown as Page<DocumentSummary> | undefined)?.last || isFetching}
             className="btn btn-secondary disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             aria-label="Go to next page"
           >

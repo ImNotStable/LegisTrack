@@ -124,18 +124,18 @@ class LegislativeDataService(
     ): String? =
         try {
             val packageId = "${billType.lowercase()}$billNumber-$congress"
-            val collectionsResponse = govInfoApiService.getCollections()
-            val billsCollection = collectionsResponse.collections.firstOrNull { it.collectionCode == "BILLS" }
-
-            if (billsCollection != null) {
-                val searchResponse = govInfoApiService.searchDocuments(packageId, 1)
-                searchResponse.packages.firstOrNull()?.let { doc ->
-                    // In a real implementation, you would fetch the full text
-                    // For now, return the title as a placeholder
-                    doc.title
+            val searchResponse = govInfoApiService.searchDocuments(packageId, 1)
+            val pkg = searchResponse.packages.firstOrNull()
+            pkg?.let { p ->
+                val details = govInfoApiService.getPackageDetails(p.packageId ?: return@let null)
+                val txtLink = details?.download?.txtLink
+                if (!txtLink.isNullOrBlank()) {
+                    val id = details.packageId ?: return@let null
+                    val bytes = govInfoApiService.downloadContent(id, "txt")
+                    bytes?.toString(Charsets.UTF_8)
+                } else {
+                    details?.title
                 }
-            } else {
-                null
             }
         } catch (e: Exception) {
             logger.debug("Failed to get GovInfo text for $billType$billNumber: ${e.message}")

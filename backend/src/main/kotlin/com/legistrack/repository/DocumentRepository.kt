@@ -62,6 +62,49 @@ interface DocumentRepository : JpaRepository<Document, Long> {
     fun findAllWithValidAnalyses(pageable: Pageable): Page<Document>
 
     /**
+     * Full-text like search across title, official summary, and billId.
+     */
+    @Query(
+        """
+        SELECT d FROM Document d
+        WHERE lower(d.title) LIKE lower(concat('%', :query, '%'))
+           OR lower(d.officialSummary) LIKE lower(concat('%', :query, '%'))
+           OR lower(d.billId) LIKE lower(concat('%', :query, '%'))
+        ORDER BY d.introductionDate DESC
+        """
+    )
+    fun searchDocuments(
+        @Param("query") query: String,
+        pageable: Pageable,
+    ): Page<Document>
+
+    /**
+     * Find documents by industry tag using Postgres ANY on text[] column.
+     */
+    @Query(
+        value = """
+        SELECT d.*
+        FROM documents d
+        JOIN ai_analyses a ON a.document_id = d.id
+        WHERE a.is_valid = true
+          AND :tag = ANY(a.industry_tags)
+        ORDER BY d.introduction_date DESC
+        """,
+        countQuery = """
+        SELECT count(DISTINCT d.id)
+        FROM documents d
+        JOIN ai_analyses a ON a.document_id = d.id
+        WHERE a.is_valid = true
+          AND :tag = ANY(a.industry_tags)
+        """,
+        nativeQuery = true,
+    )
+    fun findByIndustryTag(
+        @Param("tag") tag: String,
+        pageable: Pageable,
+    ): Page<Document>
+
+    /**
      * Finds a document by ID with only scalar fields, no collections.
      * Returns a projection DTO to completely avoid entity collections.
      *

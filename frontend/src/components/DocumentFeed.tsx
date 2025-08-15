@@ -1,14 +1,52 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DocumentCard } from './DocumentCard';
 import { LoadingSpinner } from './LoadingSpinner';
-import { useDocuments } from '../hooks/useApi';
+import { useDocuments, useInfiniteDocuments } from '../hooks/useApi';
+import { useToast } from './Toast';
 
 export const DocumentFeed: React.FC = () => {
   const [page, setPage] = useState(0);
   const [sortBy, setSortBy] = useState('introductionDate');
   const [sortDir, setSortDir] = useState('desc');
   
-  const { data, isLoading, error, isFetching } = useDocuments(page, 20, sortBy, sortDir);
+  const { data, isLoading, error, isFetching, fetchNextPage, hasNextPage } = useInfiniteDocuments(20, sortBy, sortDir);
+  const toast = useToast();
+
+  useEffect(() => {
+    if (error) {
+      toast.error('Failed to load documents.');
+    }
+  }, [error, toast]);
+
+  const observerRef = useRef<HTMLDivElement | null>(null);
+  const items = useMemo(() => data?.pages.flatMap(p => p.content) ?? [], [data]);
+  const hasMore = useMemo(() => {
+    if (!data?.pages?.length) return false;
+    const last = data.pages[data.pages.length - 1];
+    return !last.last;
+  }, [data]);
+
+  useEffect(() => {
+    const el = observerRef.current;
+    if (!el) return;
+    const IO = (typeof window !== 'undefined') ? (window as any).IntersectionObserver : undefined;
+    if (typeof IO !== 'function') return;
+    try {
+      const observer: IntersectionObserver = new IO(
+        (entries: IntersectionObserverEntry[]) => {
+          const first = entries[0];
+          if (first?.isIntersecting && hasMore && !isFetching) {
+            fetchNextPage();
+          }
+        },
+        { rootMargin: '200px 0px', threshold: 0 }
+      );
+      if (typeof (observer as any).observe === 'function') {
+        (observer as any).observe(el);
+        return () => (typeof (observer as any).unobserve === 'function' ? (observer as any).unobserve(el) : undefined);
+      }
+    } catch {}
+  }, [hasMore, isFetching, fetchNextPage]);
 
   if (isLoading && page === 0) {
     return (
@@ -63,50 +101,40 @@ export const DocumentFeed: React.FC = () => {
         
         {data && (
           <div className="mt-3 text-sm text-gray-600">
-            Showing {data.numberOfElements} of {data.totalElements} documents
-            {data.totalPages > 1 && ` (Page ${data.number + 1} of ${data.totalPages})`}
+            {(() => {
+              const last = data.pages[data.pages.length - 1];
+              const total = last.totalElements;
+              const shown = data.pages.reduce((acc, p) => acc + p.numberOfElements, 0);
+              const pageNum = last.number + 1;
+              const totalPages = last.totalPages;
+              return (
+                <>
+                  Showing {shown} of {total} documents
+                  {totalPages > 1 && ` (Page ${pageNum} of ${totalPages})`}
+                </>
+              );
+            })()}
           </div>
         )}
       </div>
 
       {/* Document List */}
       <div className="space-y-4">
-        {data?.content.map((document) => (
+        {items.map((document) => (
           <DocumentCard key={document.id} document={document} />
         ))}
+        {/* Sentinel for infinite scroll */}
+        <div ref={observerRef} />
       </div>
 
-      {/* Pagination */}
-      {data && data.totalPages > 1 && (
-        <div className="mt-8 flex justify-center items-center space-x-2">
-          <button
-            onClick={() => setPage(page - 1)}
-            disabled={data.first || isFetching}
-            className="btn btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-          
-          <span className="text-sm text-gray-600 px-4">
-            Page {data.number + 1} of {data.totalPages}
-          </span>
-          
-          <button
-            onClick={() => setPage(page + 1)}
-            disabled={data.last || isFetching}
-            className="btn btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
-        </div>
-      )}
-
       {/* Loading indicator for pagination */}
-      {isFetching && page > 0 && (
+      {isFetching && (
         <div className="mt-4 flex justify-center">
           <LoadingSpinner size="small" />
         </div>
       )}
+
+      {/* No manual fallback; infinite scroll only */}
     </div>
   );
 };

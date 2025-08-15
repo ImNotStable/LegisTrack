@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.graalvm.native)
     alias(libs.plugins.spring.boot.aot)
     alias(libs.plugins.ktlint)
+    alias(libs.plugins.detekt)
 }
 
 group = "com.legistrack"
@@ -28,9 +29,6 @@ configurations {
 
 repositories {
     mavenCentral()
-    gradlePluginPortal()
-    maven("https://repo.spring.io/milestone")
-    maven("https://repo.spring.io/snapshot")
 }
 
 dependencies {
@@ -49,6 +47,9 @@ dependencies {
 
     // Redis
     implementation(libs.bundles.redis)
+
+    // Reactive WebClient without enabling reactive web server
+    implementation(libs.bundles.http.client)
 
     // Development
     developmentOnly(libs.spring.boot.devtools)
@@ -128,23 +129,25 @@ tasks {
             // AOT processing completed
         }
     }
+
+    // Aggregate checks
+    named("check") {
+        dependsOn("detekt", "ktlintCheck")
+    }
 }
 
-// Kotlin compiler optimization - Maximum Performance
-kotlin {
-    compilerOptions {
-        freeCompilerArgs.addAll(
-            "-Xjsr305=strict",
-            "-Xjvm-default=all",
-            "-Xno-param-assertions",
-            "-Xno-call-assertions",
-            "-Xno-receiver-assertions",
-        )
-        progressiveMode = true
-        suppressWarnings = true
-    }
-    jvmToolchain(21)
+// Detekt static analysis
+detekt {
+    buildUponDefaultConfig = true
+    allRules = false
+    config.setFrom(files("config/detekt/detekt.yml"))
 }
+
+tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+    jvmTarget = "21"
+}
+
+// Remove duplicate check dependency declarations
 
 // GraalVM Native Image configuration
 graalvmNative {
@@ -178,22 +181,13 @@ noArg {
     annotation("jakarta.persistence.Embeddable")
 }
 
-// Build optimization configurations
-configurations.all {
-    // Cache dependency resolution
-    resolutionStrategy.cacheChangingModulesFor(0, "seconds")
-    resolutionStrategy.cacheDynamicVersionsFor(0, "seconds")
-}
+// Build optimization configurations (keep defaults for dependency resolution to improve stability)
 
 // Dependency management optimization
 dependencyManagement {
     imports {
-        mavenBom("org.springframework.cloud:spring-cloud-dependencies:${libs.versions.spring.cloud.get()}")
         mavenBom("org.testcontainers:testcontainers-bom:${libs.versions.testcontainers.bom.get()}")
     }
 }
 
-// Build performance monitoring
-gradle.taskGraph.whenReady {
-    // Build graph ready with ${allTasks.size} tasks
-}
+// Build performance monitoring (intentionally minimal)

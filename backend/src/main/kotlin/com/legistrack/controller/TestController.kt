@@ -7,7 +7,6 @@ import com.legistrack.service.DataIngestionService
 import com.legistrack.service.external.OllamaService
 import kotlinx.coroutines.runBlocking
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.CrossOrigin
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController
  */
 @RestController
 @RequestMapping("/api/test")
-@CrossOrigin(origins = ["http://localhost:3000"])
 class TestController(
     private val dataIngestionService: DataIngestionService,
     private val ollamaService: OllamaService,

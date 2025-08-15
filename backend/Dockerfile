@@ -3,16 +3,22 @@ FROM eclipse-temurin:21-jdk-alpine AS build
 
 WORKDIR /app
 
-# Copy all files first
-COPY . .
+# Copy Gradle wrapper and build files first for better caching
+COPY gradlew gradlew
+COPY gradle gradle
+COPY build.gradle.kts settings.gradle.kts gradle.properties ./
 
 # Fix line endings for gradlew (convert Windows CRLF to Unix LF) and make executable
 RUN apk add --no-cache dos2unix && \
     dos2unix gradlew && \
     chmod +x gradlew
 
-# Download dependencies
-RUN ./gradlew dependencies --no-daemon --quiet
+# Pre-fetch dependencies
+RUN ./gradlew --version && ./gradlew dependencies --no-daemon --quiet
+
+# Copy source only
+COPY src src
+COPY config config
 
 # Build the application
 RUN ./gradlew bootJar --no-daemon --quiet

@@ -4,15 +4,25 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
+class MockIntersectionObserver {
+  callback: (entries: IntersectionObserverEntry[]) => void;
+  constructor(cb: (entries: IntersectionObserverEntry[]) => void) {
+    this.callback = cb;
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  trigger(entries: Partial<IntersectionObserverEntry>[]) {
+    // @ts-ignore
+    this.callback(entries as IntersectionObserverEntry[]);
+  }
+}
+
+// @ts-ignore
+(global as any).IntersectionObserver = MockIntersectionObserver as any;
+
 // Mock ResizeObserver which is not available in test environment
 global.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
-
-// Mock IntersectionObserver
-global.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),

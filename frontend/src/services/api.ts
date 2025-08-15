@@ -1,7 +1,6 @@
 import { DocumentSummary, DocumentDetail, Page, ApiResponse } from '../types';
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL || '/api';
 
 class ApiService {
   private async request<T>(
@@ -10,13 +9,15 @@ class ApiService {
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
 
-    const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
+    const method = (options.method || 'GET').toUpperCase();
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string> | undefined),
     };
+    if (method !== 'GET' && method !== 'HEAD') {
+      headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+    }
+
+    const config: RequestInit = { ...options, headers };
 
     try {
       const response = await fetch(url, config);

@@ -56,28 +56,27 @@ data class AiAnalysis(
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (javaClass != other?.javaClass) return false
+        if (other !is AiAnalysis) return false
 
-        other as AiAnalysis
+        // If both entities have an ID, compare by ID only (JPA identity semantics)
+        if (id != null && other.id != null) return id == other.id
 
-        if (id != other.id) return false
+        // Fallback equality for transient entities: compare content fields (exclude timestamps)
         if (generalEffectText != other.generalEffectText) return false
         if (economicEffectText != other.economicEffectText) return false
         if (!industryTags.contentEquals(other.industryTags)) return false
         if (isValid != other.isValid) return false
-        if (analysisDate != other.analysisDate) return false
         if (modelUsed != other.modelUsed) return false
-
         return true
     }
 
     override fun hashCode(): Int {
-        var result = id?.hashCode() ?: 0
-        result = 31 * result + (generalEffectText?.hashCode() ?: 0)
+        // Use ID when available
+        id?.let { return it.hashCode() }
+        var result = (generalEffectText?.hashCode() ?: 0)
         result = 31 * result + (economicEffectText?.hashCode() ?: 0)
         result = 31 * result + industryTags.contentHashCode()
         result = 31 * result + isValid.hashCode()
-        result = 31 * result + analysisDate.hashCode()
         result = 31 * result + (modelUsed?.hashCode() ?: 0)
         return result
     }

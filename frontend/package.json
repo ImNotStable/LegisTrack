@@ -21,7 +21,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "PUBLIC_URL=. react-scripts build",
     "test": "react-scripts test",
     "test:ci": "react-scripts test --watchAll=false",
     "eject": "react-scripts eject",
@@ -48,6 +48,7 @@
   "devDependencies": {
     "@testing-library/dom": "^8.20.0",
     "@types/testing-library__jest-dom": "^5.14.9",
+    "@tailwindcss/forms": "^0.5.7",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.6",

@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.event.ApplicationReadyEvent
@@ -77,7 +78,8 @@ class OllamaService(
 						.uri("$baseUrl/api/tags")
 						.retrieve()
 						.bodyToMono(OllamaTagsResponse::class.java)
-						.block(Duration.ofSeconds(10))
+						.timeout(Duration.ofSeconds(10))
+						.awaitSingleOrNull()
 				if (response != null) {
 					logger.info("Ollama service is now available")
 					return
@@ -93,7 +95,7 @@ class OllamaService(
 			attempts++
 			delay(SERVICE_AVAILABILITY_CHECK_INTERVAL_SECONDS * 1000)
 		}
-		throw RuntimeException("Ollama service did not become available within \${MAX_SERVICE_WAIT_MINUTES} minutes")
+		throw RuntimeException("Ollama service did not become available within ${MAX_SERVICE_WAIT_MINUTES} minutes")
 	}
 
 	private suspend fun ensureModelAvailable() {
@@ -116,11 +118,12 @@ class OllamaService(
 				.bodyValue(request)
 				.retrieve()
 				.bodyToMono(String::class.java)
-				.block(Duration.ofMinutes(5))
+				.timeout(Duration.ofMinutes(5))
+				.awaitSingleOrNull()
 			logger.info("Model download request sent successfully")
 		} catch (e: Exception) {
 			logger.error("Failed to initiate model download: {}", e.message, e)
-			throw RuntimeException("Failed to download model: \${e.message}", e)
+			throw RuntimeException("Failed to download model: ${e.message}", e)
 		}
 	}
 
@@ -142,7 +145,7 @@ class OllamaService(
 			attempts++
 			delay(MODEL_DOWNLOAD_CHECK_INTERVAL_SECONDS * 1000)
 		}
-		throw RuntimeException("Model download did not complete within \${MAX_MODEL_WAIT_MINUTES} minutes")
+		throw RuntimeException("Model download did not complete within ${MAX_MODEL_WAIT_MINUTES} minutes")
 	}
 
 	suspend fun generateAnalysis(prompt: String): String? {
@@ -171,8 +174,8 @@ class OllamaService(
 					.bodyValue(request)
 					.retrieve()
 					.bodyToMono(OllamaGenerateResponse::class.java)
-					.retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-					.block()
+					.retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+					.awaitSingleOrNull()
 			response?.response?.trim()
 		} catch (e: Exception) {
 			logger.error("Error generating analysis with Ollama", e)
@@ -188,8 +191,10 @@ class OllamaService(
 					.uri("$baseUrl/api/tags")
 					.retrieve()
 					.bodyToMono(OllamaTagsResponse::class.java)
-					.block(Duration.ofSeconds(10))
-			response?.models?.any { model -> model.name.contains(modelName) } ?: false
+					.timeout(Duration.ofSeconds(10))
+					.awaitSingleOrNull()
+			response?.models?.any { model -> model.name == modelName || model.name.substringBefore(":") == modelName.substringBefore(":") }
+				?: false
 		} catch (e: WebClientResponseException) {
 			logger.debug("HTTP error checking Ollama model availability: {} {}", e.statusCode, e.message)
 			false

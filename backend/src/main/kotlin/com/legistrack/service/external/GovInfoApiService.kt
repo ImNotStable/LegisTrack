@@ -11,6 +11,8 @@ import com.legistrack.dto.external.GovInfoRelatedResponse
 import com.legistrack.dto.external.GovInfoSearchRequest
 import com.legistrack.dto.external.GovInfoSearchResponse
 import com.legistrack.dto.external.GovInfoSort
+import kotlinx.coroutines.reactor.awaitSingle
+import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.cache.annotation.Cacheable
@@ -49,7 +51,7 @@ class GovInfoApiService(
      * @param offsetMark Pagination offset marker
      * @return Response containing collections metadata
      */
-    @Cacheable("govinfo-collections", key = "#pageSize + '_' + #offsetMark")
+    @Cacheable("govinfo-collections")
     suspend fun getCollections(
         pageSize: Int = DEFAULT_PAGE_SIZE,
         offsetMark: String = DEFAULT_OFFSET_MARK,
@@ -72,8 +74,8 @@ class GovInfoApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(GovInfoCollectionsResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: GovInfoCollectionsResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching collections from GovInfo API", e)
             GovInfoCollectionsResponse()
@@ -90,10 +92,7 @@ class GovInfoApiService(
      * @param offsetMark Pagination offset marker
      * @return Response containing packages from the collection
      */
-    @Cacheable(
-        "govinfo-packages",
-        key = "#collectionCode + '_' + #lastModifiedStartDate + '_' + #lastModifiedEndDate + '_' + #pageSize + '_' + #offsetMark",
-    )
+    @Cacheable("govinfo-packages")
     suspend fun getPackages(
         collectionCode: String,
         lastModifiedStartDate: LocalDate,
@@ -122,8 +121,8 @@ class GovInfoApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(GovInfoPackagesResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: GovInfoPackagesResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching packages from GovInfo API", e)
             GovInfoPackagesResponse()
@@ -136,7 +135,7 @@ class GovInfoApiService(
      * @param packageId Unique package identifier
      * @return Package details including metadata and download links
      */
-    @Cacheable("govinfo-package-details", key = "#packageId")
+    @Cacheable("govinfo-package-details")
     suspend fun getPackageDetails(packageId: String): GovInfoPackageDetailsResponse? {
         val uri =
             UriComponentsBuilder
@@ -154,8 +153,8 @@ class GovInfoApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(GovInfoPackageDetailsResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingleOrNull()
         } catch (e: Exception) {
             logger.error("Error fetching package details from GovInfo API", e)
             null
@@ -170,7 +169,7 @@ class GovInfoApiService(
      * @param offsetMark Pagination offset marker
      * @return Response containing granules for the package
      */
-    @Cacheable("govinfo-granules", key = "#packageId + '_' + #pageSize + '_' + #offsetMark")
+    @Cacheable("govinfo-granules")
     suspend fun getPackageGranules(
         packageId: String,
         pageSize: Int = DEFAULT_PAGE_SIZE,
@@ -194,8 +193,8 @@ class GovInfoApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(GovInfoGranulesResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: GovInfoGranulesResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching package granules from GovInfo API", e)
             GovInfoGranulesResponse()
@@ -208,14 +207,14 @@ class GovInfoApiService(
      * @param granuleId Unique granule identifier
      * @return Granule details including metadata and download links
      */
-    @Cacheable("govinfo-granule-details", key = "#granuleId")
+    @Cacheable("govinfo-granule-details")
     suspend fun getGranuleDetails(granuleId: String): GovInfoGranuleDetailsResponse? {
         val uri =
             UriComponentsBuilder
                 .fromUriString(baseUrl)
-                .path("/packages/{granuleId}/summary")
+                .path("/packages/{packageId}/granules/{granuleId}/summary")
                 .queryParam("api_key", apiKey)
-                .buildAndExpand(granuleId)
+                .buildAndExpand("", granuleId)
                 .toUri()
 
         logger.debug("Fetching granule details from GovInfo API: {}", uri)
@@ -226,8 +225,8 @@ class GovInfoApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(GovInfoGranuleDetailsResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingleOrNull()
         } catch (e: Exception) {
             logger.error("Error fetching granule details from GovInfo API", e)
             null
@@ -244,7 +243,7 @@ class GovInfoApiService(
      * @param offsetMark Pagination offset marker
      * @return Response containing published packages
      */
-    @Cacheable("govinfo-published", key = "#dateIssued + '_' + #collectionCode + '_' + #docClass + '_' + #pageSize + '_' + #offsetMark")
+    @Cacheable("govinfo-published")
     suspend fun getPublishedPackages(
         dateIssued: LocalDate,
         collectionCode: String? = null,
@@ -279,8 +278,8 @@ class GovInfoApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(GovInfoPublishedResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: GovInfoPublishedResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching published packages from GovInfo API", e)
             GovInfoPublishedResponse()
@@ -294,7 +293,7 @@ class GovInfoApiService(
      * @param collectionCode Optional collection filter for relationships
      * @return Response containing related document relationships
      */
-    @Cacheable("govinfo-related", key = "#accessId + '_' + #collectionCode")
+    @Cacheable("govinfo-related")
     suspend fun getRelatedDocuments(
         accessId: String,
         collectionCode: String? = null,
@@ -324,8 +323,8 @@ class GovInfoApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(GovInfoRelatedResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: GovInfoRelatedResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error fetching related documents from GovInfo API", e)
             GovInfoRelatedResponse()
@@ -343,7 +342,7 @@ class GovInfoApiService(
      * @param historical Include historical documents
      * @return Search results response
      */
-    @Cacheable("govinfo-search", key = "#query + '_' + #pageSize + '_' + #offsetMark + '_' + #sortField + '_' + #sortOrder")
+    @Cacheable("govinfo-search")
     suspend fun searchDocuments(
         query: String,
         pageSize: Int = DEFAULT_PAGE_SIZE,
@@ -379,8 +378,8 @@ class GovInfoApiService(
                 .bodyValue(searchRequest)
                 .retrieve()
                 .bodyToMono(GovInfoSearchResponse::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block() ?: GovInfoSearchResponse()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingle()
         } catch (e: Exception) {
             logger.error("Error searching documents in GovInfo API", e)
             GovInfoSearchResponse()
@@ -398,12 +397,7 @@ class GovInfoApiService(
      * @param offsetMark Pagination offset marker
      * @return Response containing bills from the BILLS collection
      */
-    @Cacheable(
-        "govinfo-bills",
-        key =
-            "#congress + '_' + #billType + '_' + #lastModifiedStartDate + '_' + " +
-                "#lastModifiedEndDate + '_' + #pageSize + '_' + #offsetMark",
-    )
+    @Cacheable("govinfo-bills")
     suspend fun getBills(
         congress: Int? = null,
         billType: String? = null,
@@ -438,7 +432,7 @@ class GovInfoApiService(
      * @param packageId Bill status package ID
      * @return Bill status details or null if not found
      */
-    @Cacheable("govinfo-bill-status", key = "#packageId")
+    @Cacheable("govinfo-bill-status")
     suspend fun getBillStatus(packageId: String): GovInfoBillStatus? {
         val uri =
             UriComponentsBuilder
@@ -488,8 +482,8 @@ class GovInfoApiService(
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(ByteArray::class.java)
-                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)))
-                .block()
+                .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
+                .awaitSingleOrNull()
         } catch (e: Exception) {
             logger.error("Error downloading content from GovInfo API", e)
             null

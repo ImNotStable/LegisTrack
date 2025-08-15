@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { apiService } from '../services/api';
 import { DocumentSummary, DocumentDetail, Page } from '../types';
 
@@ -25,6 +25,22 @@ export const useDocuments = (
     queryKey: queryKeys.documents(page, size, sortBy, sortDir),
     queryFn: () => apiService.getDocuments(page, size, sortBy, sortDir),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: process.env.NODE_ENV === 'test' ? 0 : 2,
+  });
+};
+
+// Infinite documents for progressive loading
+export const useInfiniteDocuments = (
+  size: number = 20,
+  sortBy: string = 'introductionDate',
+  sortDir: string = 'desc'
+) => {
+  return useInfiniteQuery<Page<DocumentSummary>, Error>({
+    queryKey: ['documents-infinite', size, sortBy, sortDir],
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) => apiService.getDocuments(pageParam as number, size, sortBy, sortDir),
+    getNextPageParam: (lastPage) => (lastPage.last ? undefined : lastPage.number + 1),
+    staleTime: 5 * 60 * 1000,
     retry: process.env.NODE_ENV === 'test' ? 0 : 2,
   });
 };
@@ -90,7 +106,7 @@ export const useRefreshDocument = () => {
       // Invalidate and refetch the specific document
       queryClient.invalidateQueries({ queryKey: queryKeys.document(id) });
       // Also invalidate the documents list to show updated data
-      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ predicate: (q) => Array.isArray(q.queryKey) && (q.queryKey[0] === 'documents' || q.queryKey[0] === 'documents-infinite') });
     },
   });
 };

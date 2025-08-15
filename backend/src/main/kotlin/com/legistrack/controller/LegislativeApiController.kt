@@ -2,6 +2,11 @@ package com.legistrack.controller
 
 import com.legistrack.service.external.LegislativeDataService
 import kotlinx.coroutines.runBlocking
+import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.http.ResponseEntity
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -79,9 +84,10 @@ class LegislativeApiController(
                 )
             }
 
+            val clampedLimit = limit.coerceIn(1, 100)
             val searchResults =
                 runBlocking {
-                    legislativeDataService.searchBills(query, limit)
+                    legislativeDataService.searchBills(query, clampedLimit)
                 }
 
             ResponseEntity.ok(

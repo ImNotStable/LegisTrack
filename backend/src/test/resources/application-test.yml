@@ -32,6 +32,8 @@ spring:
           max-active: 8
           max-idle: 8
           min-idle: 0
+  cache:
+    type: none
 
 # Application-specific test configuration
 app:

@@ -11,6 +11,17 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext
 import org.springframework.data.redis.serializer.StringRedisSerializer
 import java.time.Duration
+import org.springframework.cache.interceptor.KeyGenerator
+
+class StructuredKeyGenerator : KeyGenerator {
+    override fun generate(target: Any, method: java.lang.reflect.Method, vararg params: Any?): Any {
+        return mapOf(
+            "class" to target.javaClass.simpleName,
+            "method" to method.name,
+            "params" to params.map { it?.toString() ?: "null" },
+        )
+    }
+}
 
 @Configuration
 @EnableCaching
@@ -27,10 +38,31 @@ class CacheConfig {
 
         val cacheConfigurations =
             mapOf(
+                // Congress caches
                 "congress-bills" to configuration.entryTtl(Duration.ofMinutes(30)),
                 "congress-bill-details" to configuration.entryTtl(Duration.ofHours(2)),
                 "congress-cosponsors" to configuration.entryTtl(Duration.ofHours(6)),
                 "congress-actions" to configuration.entryTtl(Duration.ofHours(6)),
+                "congress-amendments" to configuration.entryTtl(Duration.ofHours(6)),
+                "congress-amendment-details" to configuration.entryTtl(Duration.ofHours(12)),
+                "congress-summaries" to configuration.entryTtl(Duration.ofHours(12)),
+                "congress-members" to configuration.entryTtl(Duration.ofHours(6)),
+                "congress-member-details" to configuration.entryTtl(Duration.ofHours(12)),
+                "congress-reports" to configuration.entryTtl(Duration.ofHours(6)),
+                "congress-nominations" to configuration.entryTtl(Duration.ofHours(6)),
+                "congress-treaties" to configuration.entryTtl(Duration.ofHours(6)),
+                "congress-text-versions" to configuration.entryTtl(Duration.ofHours(6)),
+                // GovInfo caches
+                "govinfo-collections" to configuration.entryTtl(Duration.ofHours(24)),
+                "govinfo-packages" to configuration.entryTtl(Duration.ofHours(6)),
+                "govinfo-package-details" to configuration.entryTtl(Duration.ofHours(12)),
+                "govinfo-granules" to configuration.entryTtl(Duration.ofHours(6)),
+                "govinfo-granule-details" to configuration.entryTtl(Duration.ofHours(12)),
+                "govinfo-published" to configuration.entryTtl(Duration.ofHours(6)),
+                "govinfo-related" to configuration.entryTtl(Duration.ofHours(6)),
+                "govinfo-search" to configuration.entryTtl(Duration.ofMinutes(15)),
+                "govinfo-bills" to configuration.entryTtl(Duration.ofHours(6)),
+                "govinfo-bill-status" to configuration.entryTtl(Duration.ofHours(6)),
             )
 
         return RedisCacheManager
@@ -39,4 +71,7 @@ class CacheConfig {
             .withInitialCacheConfigurations(cacheConfigurations)
             .build()
     }
+
+    @Bean
+    fun structuredKeyGenerator(): KeyGenerator = StructuredKeyGenerator()
 }

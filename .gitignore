@@ -1,3 +1,20 @@
+# Backend
+backend/build/
+backend/bin/
+backend/.gradle/
+backend/out/
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+**/*.log
+
 # Dependencies
 node_modules/
 */node_modules/

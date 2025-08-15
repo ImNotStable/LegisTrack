@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { rest } from 'msw';
 import { DocumentDetail } from '../DocumentDetail';
 import { server } from '../../mocks/handlers';
+import { ToastProvider } from '../Toast';
 
 // Mock navigate at module level
 const mockNavigate = jest.fn();
@@ -30,9 +31,11 @@ const renderWithProviders = (documentId: string = '1') => {
   return render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Routes>
-          <Route path="/document/:id" element={<DocumentDetail />} />
-        </Routes>
+        <ToastProvider>
+          <Routes>
+            <Route path="/document/:id" element={<DocumentDetail />} />
+          </Routes>
+        </ToastProvider>
       </BrowserRouter>
     </QueryClientProvider>,
     { wrapper: ({ children }) => <div>{children}</div> }
@@ -116,7 +119,7 @@ describe('DocumentDetail', () => {
 
     // delay refresh endpoint to observe pending state
     server.use(
-      rest.post('http://localhost:8080/api/documents/1/refresh', (req, res, ctx) => {
+      rest.post('/api/documents/1/refresh', (req, res, ctx) => {
         return res(ctx.delay(150), ctx.status(200), ctx.json({ success: true }));
       })
     );
@@ -133,7 +136,7 @@ describe('DocumentDetail', () => {
 
     // Mock document without analysis
     server.use(
-      rest.get('http://localhost:8080/api/documents/1', (req, res, ctx) => {
+      rest.get('/api/documents/1', (req, res, ctx) => {
         return res(
           ctx.status(200),
           ctx.json({
@@ -163,7 +166,7 @@ describe('DocumentDetail', () => {
           })
         );
       }),
-      rest.post('http://localhost:8080/api/documents/1/analyze', (req, res, ctx) => {
+      rest.post('/api/documents/1/analyze', (req, res, ctx) => {
         return res(ctx.delay(150), ctx.status(200), ctx.json({ success: true }));
       })
     );
@@ -183,7 +186,7 @@ describe('DocumentDetail', () => {
 
   it('displays error message for non-existent document', async () => {
     server.use(
-      rest.get('http://localhost:8080/api/documents/999', (req, res, ctx) => {
+      rest.get('/api/documents/999', (req, res, ctx) => {
         return res(ctx.status(404), ctx.json({ message: 'Document not found' }));
       })
     );

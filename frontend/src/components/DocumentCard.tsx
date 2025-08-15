@@ -113,7 +113,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document }) => {
                 />
                 <div
                   className="bg-green-500"
-                  style={{ width: `${100 - democraticPercentage - republicanPercentage}%` }}
+                  style={{ width: `${Math.max(0, 100 - democraticPercentage - republicanPercentage)}%` }}
                 />
               </div>
             </div>

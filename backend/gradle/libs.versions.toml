@@ -25,11 +25,13 @@ spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-
 spring-boot-starter-data-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis" }
 spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
-spring-boot-starter-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux" }
-spring-boot-starter-quartz = { module = "org.springframework.boot:spring-boot-starter-quartz" }
 spring-boot-starter-logging = { module = "org.springframework.boot:spring-boot-starter-logging" }
 spring-boot-devtools = { module = "org.springframework.boot:spring-boot-devtools" }
 spring-boot-config-processor = { module = "org.springframework.boot:spring-boot-configuration-processor" }
+
+# Spring WebClient without reactive web server
+spring-webflux = { module = "org.springframework:spring-webflux" }
+reactor-netty-http = { module = "io.projectreactor.netty:reactor-netty-http" }
 
 # Jackson
 jackson-module-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
@@ -69,8 +71,6 @@ spring-starters = [
   "spring-boot-starter-data-redis",
   "spring-boot-starter-validation",
   "spring-boot-starter-actuator",
-  "spring-boot-starter-webflux",
-  "spring-boot-starter-quartz",
   "spring-boot-starter-logging"
 ]
 jackson = [
@@ -82,6 +82,10 @@ kotlin = [
   "kotlin-stdlib",
   "kotlinx-coroutines-core",
   "kotlinx-coroutines-reactor"
+]
+http-client = [
+  "spring-webflux",
+  "reactor-netty-http"
 ]
 db = [
   "flyway-core",

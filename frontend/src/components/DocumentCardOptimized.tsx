@@ -105,8 +105,8 @@ export const DocumentCard: React.FC<DocumentCardProps> = memo(({ document }) => 
                 />
                 <div
                   className="bg-green-500"
-                  style={{ width: `${100 - democraticPercentage - republicanPercentage}%` }}
-                  title={`Other: ${(100 - democraticPercentage - republicanPercentage).toFixed(1)}%`}
+                  style={{ width: `${Math.max(0, 100 - democraticPercentage - republicanPercentage)}%` }}
+                  title={`Other: ${Math.max(0, 100 - democraticPercentage - republicanPercentage).toFixed(1)}%`}
                 />
               </div>
             </div>

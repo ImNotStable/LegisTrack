@@ -3,6 +3,7 @@ package com.legistrack.service
 import com.legistrack.entity.Document
 import com.legistrack.repository.AiAnalysisRepository
 import com.legistrack.repository.DocumentRepository
+import com.legistrack.service.external.OllamaService
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -24,12 +25,14 @@ class DocumentServiceTestFixed {
     private lateinit var documentRepository: DocumentRepository
     private lateinit var aiAnalysisRepository: AiAnalysisRepository
     private lateinit var documentService: DocumentService
+    private lateinit var ollamaService: OllamaService
 
     @BeforeEach
     fun setUp() {
         documentRepository = mockk()
         aiAnalysisRepository = mockk()
-        documentService = DocumentService(documentRepository, aiAnalysisRepository)
+        ollamaService = mockk()
+        documentService = DocumentService(documentRepository, aiAnalysisRepository, ollamaService)
     }
 
     @Test

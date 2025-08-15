@@ -212,6 +212,32 @@ class DataIngestionService(
         }
     }
 
+    /**
+     * Refresh a single document's sponsors/actions from external sources and optionally re-run AI.
+     */
+    suspend fun refreshDocument(documentId: Long, reanalyze: Boolean = false) {
+        val document = documentRepository.findById(documentId).orElse(null) ?: return
+
+        // Parse identifiers from existing fields
+        val type = document.billType ?: return
+        val congress = document.congressSession ?: return
+        val number = document.billId.substringAfter(type).substringBefore('-')
+
+        try {
+            val cosponsorsResponse = congressApiService.getBillCosponsors(congress, type, number)
+            processSponsors(document, cosponsorsResponse.cosponsors)
+
+            val actionsResponse = congressApiService.getBillActions(congress, type, number)
+            processActions(document, actionsResponse.actions)
+        } catch (e: Exception) {
+            logger.error("Error refreshing document {}", document.billId, e)
+        }
+
+        if (reanalyze) {
+            triggerAiAnalysis(document)
+        }
+    }
+
     private suspend fun triggerAiAnalysis(document: Document) {
         try {
             logger.info("Starting AI analysis for document: {}", document.billId)
@@ -241,18 +267,26 @@ class DataIngestionService(
                     document.officialSummary,
                 )
 
-            // Save analysis
-            val analysis =
-                AiAnalysis(
-                    document = document,
-                    generalEffectText = generalEffect,
-                    economicEffectText = economicEffect,
-                    industryTags = industryTags.toTypedArray(),
-                    modelUsed = "0xroyce/plutus",
-                )
+            // Persist only if we have meaningful content
+            val hasContent =
+                !generalEffect.isNullOrBlank() || !economicEffect.isNullOrBlank() || industryTags.isNotEmpty()
 
-            aiAnalysisRepository.save(analysis)
-            logger.info("AI analysis completed for document: {}", document.billId)
+            if (hasContent) {
+                val analysis =
+                    AiAnalysis(
+                        document = document,
+                        generalEffectText = generalEffect,
+                        economicEffectText = economicEffect,
+                        industryTags = industryTags.toTypedArray(),
+                        isValid = true,
+                        modelUsed = "gpt-oss:20b",
+                    )
+
+                aiAnalysisRepository.save(analysis)
+                logger.info("AI analysis completed for document: {}", document.billId)
+            } else {
+                logger.warn("AI analysis produced no content for document: {} — skipping save", document.billId)
+            }
         } catch (e: Exception) {
             logger.error("Error during AI analysis for document: {}", document.billId, e)
         }
