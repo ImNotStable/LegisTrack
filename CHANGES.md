@@ -1,3 +1,71 @@
+## 2025-08-15 19:42 - [BUGFIX] Resolve multiple open issues across backend and frontend
+
+Files changed:
+- backend/src/main/kotlin/com/legistrack/config/CacheConfig.kt (stable String Redis key generator)
+- backend/src/main/kotlin/com/legistrack/service/external/CongressApiService.kt (sanitize api_key in logs)
+- backend/src/main/kotlin/com/legistrack/service/external/GovInfoApiService.kt (sanitize api_key in logs)
+- backend/src/main/kotlin/com/legistrack/controller/DocumentController.kt (clamp page/size; standardized error envelope)
+- backend/settings.gradle.kts (use version catalog for Foojay plugin)
+- frontend/package.json (pin exact dependency versions)
+- issues.md (mark resolved items)
+
+Description:
+Implemented stable String keys for Redis cache to match StringRedisSerializer; sanitized sensitive query params from external API debug logs; added pagination input clamping and standardized error envelopes in controllers; removed hardcoded Foojay plugin version by sourcing from the version catalog; pinned frontend dependency versions to exact values per rules.
+
+Impact assessment:
+- Improves cache compatibility and avoids potential key serialization issues.
+- Enhances security by preventing API key leakage in logs.
+- Hardens API correctness and resilience with validated paging and consistent error responses.
+- Reduces version drift and duplication in Gradle settings.
+- Ensures deterministic frontend builds.
+
+Developer initials: AI, JH
+
+## 2025-08-15 19:25 - [CONFIG] Update issues.md with concrete gaps and align with rules
+
+Files changed:
+- issues.md (added items: Redis key generator serialization mismatch; Foojay plugin duplication unresolved; error envelope consistency; request paging validation; frontend exact version pinning; log sanitization for API keys)
+- CHANGES.md (this entry)
+
+Description:
+Expanded open issues with precise, actionable items discovered during review: ensure Redis keys are stable strings; avoid duplicating Foojay plugin versions; standardize error responses; clamp page/size; pin frontend dependencies to exact versions; and sanitize sensitive query params in logs.
+
+Impact assessment:
+- Documentation-only; sets guardrails for upcoming fixes across backend and frontend.
+- Improves security posture and correctness alignment without runtime changes.
+
+Developer initials: AI, JH
+
+## 2025-08-15 19:12 - [REFACTOR] Consolidate dependency rules into unified Version & Dependency Management section
+
+Files changed:
+- .github/copilot-instructions.md (merged former Dependency & Gradle Version Catalog rules into Version & Dependency Management; removed duplicate section)
+- CHANGES.md (this entry)
+
+Description:
+Streamlined instructions by merging separate dependency catalog section into a single "Version & Dependency Management" block covering catalog-only declarations, bundling rules, stability hierarchy, forbidden raw coordinates, and enforcement. Eliminates redundancy while preserving all constraints.
+
+Impact assessment:
+- Documentation-only consolidation; zero runtime or build logic changes.
+- Slight token reduction improving assistant parsing efficiency.
+
+Developer initials: AI, JH
+
+## 2025-08-15 19:05 - [REFACTOR] Enforce Gradle version catalog bundling & architecture abstraction guidance
+
+Files changed:
+- .github/copilot-instructions.md (added Dependency & Gradle Version Catalog section + Architecture Abstraction & Flexibility section)
+- CHANGES.md (this entry)
+
+Description:
+Introduced explicit REQUIRED/FORBIDDEN rules mandating all dependencies/plugins/BOMs be declared exclusively via `gradle/libs.versions.toml` with domain-focused bundles; prohibited raw coordinates or inline versions in build scripts. Added concise architecture abstraction guidance (ports/adapters pattern, interface-first boundaries, config injection) to reinforce flexible, swappable design. Content kept terse for token efficiency; no runtime behavior changes.
+
+Impact assessment:
+- Documentation-only; strengthens consistency and future scalability (easier upgrades, reduced drift).
+- Low risk: purely textual; build logic already aligned with catalog usage.
+
+Developer initials: AI, JH
+
 ## 2025-08-15 18:55 - [REFACTOR] Add open issues alignment section to AI instructions
 
 Files changed:

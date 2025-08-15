@@ -66,7 +66,7 @@ class GovInfoApiService(
                 .build()
                 .toUri()
 
-        logger.debug("Fetching collections from GovInfo API: {}", uri)
+        logger.debug("Fetching collections from GovInfo API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -113,7 +113,7 @@ class GovInfoApiService(
                 .buildAndExpand(collectionCode, startDateStr, endDateStr)
                 .toUri()
 
-        logger.debug("Fetching packages from GovInfo API: {}", uri)
+        logger.debug("Fetching packages from GovInfo API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -145,7 +145,7 @@ class GovInfoApiService(
                 .buildAndExpand(packageId)
                 .toUri()
 
-        logger.debug("Fetching package details from GovInfo API: {}", uri)
+        logger.debug("Fetching package details from GovInfo API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -185,7 +185,7 @@ class GovInfoApiService(
                 .buildAndExpand(packageId)
                 .toUri()
 
-        logger.debug("Fetching package granules from GovInfo API: {}", uri)
+        logger.debug("Fetching package granules from GovInfo API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -208,16 +208,16 @@ class GovInfoApiService(
      * @return Granule details including metadata and download links
      */
     @Cacheable("govinfo-granule-details")
-    suspend fun getGranuleDetails(granuleId: String): GovInfoGranuleDetailsResponse? {
+    suspend fun getGranuleDetails(packageId: String, granuleId: String): GovInfoGranuleDetailsResponse? {
         val uri =
             UriComponentsBuilder
                 .fromUriString(baseUrl)
                 .path("/packages/{packageId}/granules/{granuleId}/summary")
                 .queryParam("api_key", apiKey)
-                .buildAndExpand("", granuleId)
+                .buildAndExpand(packageId, granuleId)
                 .toUri()
 
-        logger.debug("Fetching granule details from GovInfo API: {}", uri)
+        logger.debug("Fetching granule details from GovInfo API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -270,7 +270,7 @@ class GovInfoApiService(
 
         val uri = uriBuilder.buildAndExpand(dateStr).toUri()
 
-        logger.debug("Fetching published packages from GovInfo API: {}", uri)
+        logger.debug("Fetching published packages from GovInfo API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -315,7 +315,7 @@ class GovInfoApiService(
                 uriBuilder.buildAndExpand(accessId).toUri()
             }
 
-        logger.debug("Fetching related documents from GovInfo API: {}", uri)
+        logger.debug("Fetching related documents from GovInfo API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -442,7 +442,7 @@ class GovInfoApiService(
                 .buildAndExpand(packageId)
                 .toUri()
 
-        logger.debug("Fetching bill status from GovInfo API: {}", uri)
+        logger.debug("Fetching bill status from GovInfo API: {}", sanitizeUri(uri.toString()))
 
         return try {
             // Note: This would typically parse XML response to extract bill status
@@ -489,4 +489,5 @@ class GovInfoApiService(
             null
         }
     }
+    private fun sanitizeUri(uri: String): String = uri.replace(Regex("(api_key=)[^&]+"), "$1***")
 }

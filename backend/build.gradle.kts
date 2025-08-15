@@ -187,6 +187,7 @@ noArg {
 dependencyManagement {
     imports {
         mavenBom("org.testcontainers:testcontainers-bom:${libs.versions.testcontainers.bom.get()}")
+        mavenBom(libs.spring.cloud.dependencies.get().toString())
     }
 }
 

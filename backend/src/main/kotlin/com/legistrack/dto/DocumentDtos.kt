@@ -46,7 +46,7 @@ data class SponsorDto(
 
 data class DocumentActionDto(
     val id: Long,
-    val actionDate: LocalDate,
+    val actionDate: LocalDate?,
     val actionType: String?,
     val actionText: String,
     val chamber: String?,

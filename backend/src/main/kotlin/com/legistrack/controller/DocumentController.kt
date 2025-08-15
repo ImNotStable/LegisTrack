@@ -32,14 +32,11 @@ class DocumentController(
         @RequestParam(defaultValue = "introductionDate") sortBy: String,
         @RequestParam(defaultValue = "desc") sortDir: String,
     ): ResponseEntity<Page<DocumentSummaryDto>> {
-        val sort =
-            if (sortDir.lowercase() == "desc") {
-                Sort.by(sortBy).descending()
-            } else {
-                Sort.by(sortBy).ascending()
-            }
+        val safePage = page.coerceAtLeast(0)
+        val safeSize = size.coerceIn(1, 100)
+        val sort = if (sortDir.lowercase() == "desc") Sort.by(sortBy).descending() else Sort.by(sortBy).ascending()
 
-        val pageable = PageRequest.of(page, size, sort)
+        val pageable = PageRequest.of(safePage, safeSize, sort)
         val documents = documentService.getAllDocuments(pageable)
 
         return ResponseEntity.ok(documents)
@@ -63,7 +60,9 @@ class DocumentController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
     ): ResponseEntity<Page<DocumentSummaryDto>> {
-        val pageable = PageRequest.of(page, size, Sort.by("introductionDate").descending())
+        val safePage = page.coerceAtLeast(0)
+        val safeSize = size.coerceIn(1, 100)
+        val pageable = PageRequest.of(safePage, safeSize, Sort.by("introductionDate").descending())
         val results = documentService.searchDocuments(query, pageable)
         return ResponseEntity.ok(results)
     }
@@ -74,7 +73,9 @@ class DocumentController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
     ): ResponseEntity<Page<DocumentSummaryDto>> {
-        val pageable = PageRequest.of(page, size, Sort.by("introductionDate").descending())
+        val safePage = page.coerceAtLeast(0)
+        val safeSize = size.coerceIn(1, 100)
+        val pageable = PageRequest.of(safePage, safeSize, Sort.by("introductionDate").descending())
         val results = documentService.findByIndustryTag(tag, pageable)
         return ResponseEntity.ok(results)
     }
@@ -103,16 +104,14 @@ class DocumentController(
     }
 
     @PostMapping("/ingest")
-    fun triggerDataIngestion(
+    suspend fun triggerDataIngestion(
         @RequestParam(required = false) fromDate: LocalDate?,
     ): ResponseEntity<Map<String, Any>> =
         try {
             val ingestedCount =
-                runBlocking {
-                    dataIngestionService.ingestRecentDocuments(
-                        fromDate ?: LocalDate.now().minusDays(7),
-                    )
-                }
+                dataIngestionService.ingestRecentDocuments(
+                    fromDate ?: LocalDate.now().minusDays(7),
+                )
 
             ResponseEntity.ok(
                 mapOf(
@@ -131,23 +130,23 @@ class DocumentController(
         }
 
     @PostMapping("/{id}/refresh")
-    fun refreshDocument(
+    suspend fun refreshDocument(
         @PathVariable id: Long,
         @RequestParam(defaultValue = "false") reanalyze: Boolean,
     ): ResponseEntity<Map<String, Any>> =
         try {
-            runBlocking { dataIngestionService.refreshDocument(id, reanalyze) }
+            dataIngestionService.refreshDocument(id, reanalyze)
             ResponseEntity.ok(mapOf("success" to true))
         } catch (e: Exception) {
             ResponseEntity.internalServerError().body(mapOf("success" to false, "message" to (e.message ?: "error")))
         }
 
     @PostMapping("/{id}/analyze")
-    fun analyzeDocument(@PathVariable id: Long): ResponseEntity<DocumentDetailDto> =
+    suspend fun analyzeDocument(@PathVariable id: Long): ResponseEntity<Any> =
         try {
-            val analyzed = runBlocking { documentService.analyzeDocument(id) }
+            val analyzed = documentService.analyzeDocument(id)
             if (analyzed != null) ResponseEntity.ok(analyzed) else ResponseEntity.notFound().build()
         } catch (e: Exception) {
-            ResponseEntity.internalServerError().build()
+            ResponseEntity.internalServerError().body(mapOf("success" to false, "message" to (e.message ?: "error")))
         }
 }

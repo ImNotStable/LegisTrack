@@ -61,7 +61,7 @@ class CongressApiService(
                 .build()
                 .toUri()
 
-        logger.debug("Fetching bills from Congress API: {}", uri)
+        logger.debug("Fetching bills from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -92,7 +92,7 @@ class CongressApiService(
                 .buildAndExpand(congress, billType.lowercase(), billNumber)
                 .toUri()
 
-        logger.debug("Fetching bill details from Congress API: {}", uri)
+        logger.debug("Fetching bill details from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             @Suppress("UNCHECKED_CAST")
@@ -130,7 +130,7 @@ class CongressApiService(
                 .buildAndExpand(congress, billType.lowercase(), billNumber)
                 .toUri()
 
-        logger.debug("Fetching bill cosponsors from Congress API: {}", uri)
+        logger.debug("Fetching bill cosponsors from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -162,7 +162,7 @@ class CongressApiService(
                 .buildAndExpand(congress, billType.lowercase(), billNumber)
                 .toUri()
 
-        logger.debug("Fetching bill actions from Congress API: {}", uri)
+        logger.debug("Fetching bill actions from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -208,7 +208,7 @@ class CongressApiService(
                 .buildAndExpand(congress)
                 .toUri()
 
-        logger.debug("Fetching amendments from Congress API: {}", uri)
+        logger.debug("Fetching amendments from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -239,7 +239,7 @@ class CongressApiService(
                 .buildAndExpand(congress, amendmentType.lowercase(), amendmentNumber)
                 .toUri()
 
-        logger.debug("Fetching amendment details from Congress API: {}", uri)
+        logger.debug("Fetching amendment details from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             @Suppress("UNCHECKED_CAST")
@@ -277,7 +277,7 @@ class CongressApiService(
                 .buildAndExpand(congress, billType.lowercase(), billNumber)
                 .toUri()
 
-        logger.debug("Fetching bill summaries from Congress API: {}", uri)
+        logger.debug("Fetching bill summaries from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -324,7 +324,7 @@ class CongressApiService(
                     .toUri()
             }
 
-        logger.debug("Fetching members from Congress API: {}", uri)
+        logger.debug("Fetching members from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -351,7 +351,7 @@ class CongressApiService(
                 .buildAndExpand(bioguideId)
                 .toUri()
 
-        logger.debug("Fetching member details from Congress API: {}", uri)
+        logger.debug("Fetching member details from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             @Suppress("UNCHECKED_CAST")
@@ -396,7 +396,7 @@ class CongressApiService(
 
         val uri = uriBuilder.buildAndExpand(congress).toUri()
 
-        logger.debug("Fetching committee reports from Congress API: {}", uri)
+        logger.debug("Fetching committee reports from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -430,7 +430,7 @@ class CongressApiService(
                 .buildAndExpand(congress)
                 .toUri()
 
-        logger.debug("Fetching nominations from Congress API: {}", uri)
+        logger.debug("Fetching nominations from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -464,7 +464,7 @@ class CongressApiService(
                 .buildAndExpand(congress)
                 .toUri()
 
-        logger.debug("Fetching treaties from Congress API: {}", uri)
+        logger.debug("Fetching treaties from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -496,7 +496,7 @@ class CongressApiService(
                 .buildAndExpand(congress, billType.lowercase(), billNumber)
                 .toUri()
 
-        logger.debug("Fetching bill text versions from Congress API: {}", uri)
+        logger.debug("Fetching bill text versions from Congress API: {}", sanitizeUri(uri.toString()))
 
         return try {
             webClient
@@ -518,4 +518,6 @@ class CongressApiService(
 
     private fun parseCongressMember(memberData: Map<String, Any>): CongressMember =
         objectMapper.convertValue(memberData, CongressMember::class.java)
+
+    private fun sanitizeUri(uri: String): String = uri.replace(Regex("(api_key=)[^&]+"), "$1***")
 }

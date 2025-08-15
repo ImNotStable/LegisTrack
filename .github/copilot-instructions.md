@@ -226,14 +226,25 @@ Conflict Resolution:
 
 ### Project-Wide Standards
 
-#### Version Management Standards (All Components)
-- **REQUIRED**: Prioritize stability & ecosystem compatibility over novelty for all major runtimes and libraries [REL][CORR]
-- **REQUIRED**: Prefer currently supported LTS version that matches majority of ecosystem plugins/tools; if unavailable, choose most widely adopted stable (not just most recent) release
-- **PATTERN**: Selection order: `Supported LTS (broad plugin compatibility) > Widely adopted Stable (proven for ≥1 minor cycle) > Latest Stable (only if low risk) > Release Candidate (only to resolve security/CVE or blocking incompatibility)`
-- **REQUIRED**: Record chosen versions + rationale (compat notes, EOL dates) in documentation when upgraded
-- **FORBIDDEN**: Beta/alpha/snapshot/canary in production or default configs
-- **REQUIRED**: Pin exact versions (no range specifiers like `^`, `~`, `*`, `latest`)
-- **⚠️ ENFORCEMENT**: Reject proposals that downgrade stability (e.g., replacing a proven LTS with a just-released major) or introduce pre-release artifacts
+
+#### Architecture Abstraction & Flexibility
+- **REQUIRED**: Favor abstractions (interfaces/ports) at service boundaries: external APIs, AI model provider, persistence queries beyond basic CRUD. [MAIN][REL]
+- **PATTERN**: Use ports/adapters naming: `CongressPort` (interface) + `CongressApiService` (adapter), `AiModelPort` + `OllamaService` (adapter) when refactoring.
+- **REQUIRED**: Keep domain models (`Document`, `AiAnalysis`) free of framework annotations beyond JPA—no leaking WebClient, controller, or HTTP concerns into domain.
+- **REQUIRED**: New cross-cutting concerns (metrics, tracing) implemented via Spring configuration & AOP/filters—not manual scattering in services.
+- **FORBIDDEN**: Hardcoding model names, URLs, or credentials inside services; always inject via configuration properties.
+- **FORBIDDEN**: Creating parallel ad-hoc abstractions that duplicate existing port responsibilities—extend existing interface instead.
+- **ENFORCEMENT**: Assistant must nudge toward interface-first design for new external integrations and note if a direct concrete implementation would reduce future swap ability.
+
+#### Version & Dependency Management (All Components)
+- **REQUIRED**: Declare every library, plugin, and BOM only in `gradle/libs.versions.toml`; never hardcode versions or raw coordinates in build scripts. [DATA][MAIN]
+- **REQUIRED**: Use bundles for all logical groups (jackson, kotlin, http.client, db, redis, test, spring.starters); create a new domain bundle when ≥2 libs commonly co-occur.
+- **REQUIRED**: New lib workflow: (1) add version (or rely on BOM), (2) add `[libraries]` entry, (3) add to existing/new bundle, (4) document in `CHANGES.md` with rationale.
+- **REQUIRED**: Prioritize stability & ecosystem compatibility over novelty; prefer supported LTS, then widely adopted stable, then latest stable only if low risk, RC only for CVE/blocking issues. [REL][CORR]
+- **PATTERN**: Bundle names by domain (e.g., `observability`, `ai`) to ease reuse across modules.
+- **REQUIRED**: Pin exact versions (no `^`, `~`, `*`, `latest`); avoid duplicating version strings—centralize or use BOM.
+- **FORBIDDEN**: Inline version overrides, raw `implementation("group:artifact:ver")`, skipping bundle when group exists, duplicating same version literal across places, using pre-release in prod.
+- **ENFORCEMENT**: Assistant must refuse proposals with raw coordinates, un-bundled multi-lib adds, or destabilizing downgrades/upgrades; suggest catalog patch instead.
 
 #### File Management & Cleanup
 - **REQUIRED**: Remove all temporary files, build artifacts, and IDE-specific files from version control [MAIN]

@@ -31,7 +31,7 @@ class LegislativeApiController(
      * Get comprehensive bill details by congress, type, and number
      */
     @GetMapping("/bills/{congress}/{type}/{number}")
-    fun getBillDetails(
+    suspend fun getBillDetails(
         @PathVariable congress: Int,
         @PathVariable type: String,
         @PathVariable number: String,
@@ -39,10 +39,7 @@ class LegislativeApiController(
         try {
             logger.info("Fetching bill details for $type$number in Congress $congress")
 
-            val billDetails =
-                runBlocking {
-                    legislativeDataService.getBillDetails(congress, type, number)
-                }
+            val billDetails = legislativeDataService.getBillDetails(congress, type, number)
 
             if (billDetails != null) {
                 ResponseEntity.ok(
@@ -68,7 +65,7 @@ class LegislativeApiController(
      * Search for bills across multiple data sources
      */
     @GetMapping("/bills/search")
-    fun searchBills(
+    suspend fun searchBills(
         @RequestParam query: String,
         @RequestParam(defaultValue = "20") limit: Int,
     ): ResponseEntity<Map<String, Any>> {
@@ -85,10 +82,7 @@ class LegislativeApiController(
             }
 
             val clampedLimit = limit.coerceIn(1, 100)
-            val searchResults =
-                runBlocking {
-                    legislativeDataService.searchBills(query, clampedLimit)
-                }
+            val searchResults = legislativeDataService.searchBills(query, clampedLimit)
 
             ResponseEntity.ok(
                 mapOf<String, Any>(

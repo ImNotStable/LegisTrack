@@ -41,7 +41,7 @@ export interface Sponsor {
 
 export interface DocumentAction {
   id: number;
-  actionDate: string;
+  actionDate?: string;
   actionType?: string;
   actionText: string;
   chamber?: string;

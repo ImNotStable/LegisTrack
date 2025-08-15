@@ -6,7 +6,7 @@ pluginManagement {
 }
 
 plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version libs.versions.foojay.get()
+    id(libs.plugins.foojay.resolver.convention.get().pluginId) version libs.versions.foojay.get()
 }
 
 dependencyResolutionManagement {

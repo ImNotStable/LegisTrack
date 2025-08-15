@@ -15,11 +15,18 @@ import org.springframework.cache.interceptor.KeyGenerator
 
 class StructuredKeyGenerator : KeyGenerator {
     override fun generate(target: Any, method: java.lang.reflect.Method, vararg params: Any?): Any {
-        return mapOf(
-            "class" to target.javaClass.simpleName,
-            "method" to method.name,
-            "params" to params.map { it?.toString() ?: "null" },
-        )
+        val className = target.javaClass.simpleName
+        val methodName = method.name
+        val serializedParams =
+            params.joinToString(separator = "|") { param ->
+                when (param) {
+                    null -> "null"
+                    is Iterable<*> -> param.joinToString(prefix = "[", postfix = "]", separator = ",") { it?.toString() ?: "null" }
+                    is Array<*> -> param.joinToString(prefix = "[", postfix = "]", separator = ",") { it?.toString() ?: "null" }
+                    else -> param.toString()
+                }
+            }
+        return "$className.$methodName:$serializedParams"
     }
 }
 
@@ -73,5 +80,5 @@ class CacheConfig {
     }
 
     @Bean
-    fun structuredKeyGenerator(): KeyGenerator = StructuredKeyGenerator()
+    fun keyGenerator(): KeyGenerator = StructuredKeyGenerator()
 }

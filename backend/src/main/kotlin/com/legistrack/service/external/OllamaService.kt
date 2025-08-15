@@ -25,6 +25,7 @@ class OllamaService(
 	private val webClient: WebClient,
 	@Value("\${app.ollama.base-url}") private val baseUrl: String,
 	@Value("\${app.ollama.model}") private val modelName: String,
+	@Value("\${app.ollama.bootstrap.enabled:true}") private val bootstrapEnabled: Boolean,
 ) {
 	companion object {
 		private val logger = LoggerFactory.getLogger(OllamaService::class.java)
@@ -50,6 +51,10 @@ class OllamaService(
 		if (baseUrl.isBlank()) {
 			logger.info("Ollama base URL is not configured; AI analysis will be disabled")
 			isServiceReady = false
+			return
+		}
+		if (!bootstrapEnabled) {
+			logger.info("Ollama bootstrap disabled via configuration; skipping initialization")
 			return
 		}
 		logger.info("Starting Ollama service initialization with model: {}", modelName)
