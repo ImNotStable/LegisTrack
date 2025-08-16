@@ -24,4 +24,7 @@ rootProject.name = "legistrack-backend"
 // Phase 1: Multi-module structure
 include("core-domain")
 
+// Phase 2: Persistence layer
+include("persistence-jpa")
+
 // Keep settings lean for stability

@@ -1,7 +1,8 @@
 package com.legistrack.controller
 
-import com.legistrack.dto.DocumentSummaryDto
-import com.legistrack.service.DataIngestionService
+import com.legistrack.domain.dto.DocumentSummaryDto
+// TODO: Phase 3 - Re-enable DataIngestionService tests
+// import com.legistrack.service.DataIngestionService
 import com.legistrack.service.DocumentService
 import com.ninjasquad.springmockk.MockkBean
 import io.mockk.CapturingSlot
@@ -14,8 +15,8 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest
 // Removed deprecated SpyBean usage
-import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageImpl
+import com.legistrack.domain.common.Page
+import com.legistrack.domain.dto.PartyBreakdownDto
 import org.springframework.data.domain.Pageable
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
@@ -33,14 +34,25 @@ class DocumentControllerTest {
 	@MockkBean
 	lateinit var documentService: DocumentService
 
-	@MockkBean
-	lateinit var dataIngestionService: DataIngestionService
+	// TODO: Phase 3 - Re-enable DataIngestionService tests
+	// @MockkBean
+	// lateinit var dataIngestionService: DataIngestionService
 
 	@Test
 	fun `getAllDocuments clamps negative page and large size`() {
 		val pageableSlot: CapturingSlot<Pageable> = slot()
 		every { documentService.getAllDocuments(capture(pageableSlot)) } answers {
-			PageImpl(emptyList<DocumentSummaryDto>()) as Page<DocumentSummaryDto>
+			Page(
+				content = emptyList<DocumentSummaryDto>(),
+				totalElements = 0,
+				totalPages = 0,
+				pageNumber = 0,
+				pageSize = 20,
+				isFirst = true,
+				isLast = true,
+				hasNext = false,
+				hasPrevious = false
+			)
 		}
 
 		mockMvc.perform(get("/api/documents?page=-5&size=500&sortBy=introductionDate&sortDir=desc"))

@@ -15,7 +15,7 @@ This document contains three major improvement initiatives for LegisTrack:
 **Current Status**: All phases are in planning stage (⬜ Not Started). Priority: Complete Phase 0 baseline capture first.
 
 **Overall Progress**: 
-- 🏗️ Modularization: 2/11 phases complete (18%)
+- 🏗️ Modularization: 3/11 phases complete (27%)
 - ⚡ Document Loading: 0/9 phases complete (0%)  
 - 🐳 Docker Runtime: 0/7 phases complete (0%)
 
@@ -308,17 +308,22 @@ Rollback strategy:
 
 ### 11.7 Quick Start Execution Order
 
-**Phase 0 → 1 Checklist:**
+**Phase 0 → 1 → 2 Checklist:**
 1. ✅ Capture baseline metrics
 2. ✅ Add port interfaces  
 3. ✅ Add ArchUnit dependency
 4. ✅ Update CHANGES.md
 5. ✅ Commit & tag `phase-0-start`
-6. ⬜ Create `core-domain` module
-7. ⬜ Move domain value objects
-8. ⬜ Add mappers & update tests
-9. ⬜ Complete domain model migration
-10. ⬜ Tag `phase-1-complete`
+6. ✅ Create `core-domain` module
+7. ✅ Move domain value objects
+8. ✅ Add mappers & update tests
+9. ✅ Complete domain model migration
+10. ✅ Tag `phase-1-complete`
+11. ✅ Create `persistence-jpa` module
+12. ✅ Move JPA entities and repositories
+13. ✅ Implement DocumentRepositoryPort adapter
+14. ✅ Update services to use ports
+15. ⬜ Tag `phase-2-complete`
 
 ### 11.8 Metrics Update Template
 

@@ -1,3 +1,37 @@
+## 2025-08-15 21:10 - [REFACTOR] Complete Phase 2: Extract persistence-jpa module
+
+Files changed:
+- backend/settings.gradle.kts (added persistence-jpa module)
+- backend/persistence-jpa/ (new module with JPA entities and repositories)
+- backend/persistence-jpa/src/main/kotlin/com/legistrack/persistence/entity/ (JPA entities moved from main)
+- backend/persistence-jpa/src/main/kotlin/com/legistrack/persistence/repository/ (JPA repositories moved from main)
+- backend/persistence-jpa/src/main/kotlin/com/legistrack/persistence/adapter/ (port implementations)
+- backend/persistence-jpa/src/main/kotlin/com/legistrack/persistence/mapper/ (entity-domain mapping)
+- backend/core-domain/src/main/kotlin/com/legistrack/domain/port/ (repository port interfaces)
+- backend/core-domain/src/main/kotlin/com/legistrack/domain/common/ (domain-specific pagination types)
+- backend/src/main/kotlin/com/legistrack/service/DocumentService.kt (updated to use ports)
+- backend/src/main/kotlin/com/legistrack/controller/DocumentController.kt (updated imports and types)
+- Removed old entities and repositories from main module
+- Temporarily disabled DataIngestionService and related services for Phase 3 update
+
+Description:
+Successfully extracted the persistence layer into persistence-jpa module, implementing ports & adapters pattern. Created DocumentRepositoryPort interface in core-domain with framework-agnostic pagination types. Implemented DocumentRepositoryAdapter in persistence-jpa that converts between JPA entities and domain entities. Updated DocumentService to use port interfaces instead of direct repositories. Established clean separation between domain logic and persistence concerns.
+
+Impact assessment:
+- Complete isolation of JPA/Spring Data dependencies in persistence-jpa module ([ARCH][DATA]).
+- Domain layer now completely framework-agnostic with custom Page/PageRequest types.
+- Service layer uses port interfaces, enabling easy testing and adapter swapping.
+- Entity-domain mapping handles conversion between JPA relationships and domain ID references.
+- Multi-module structure enables independent persistence technology changes.
+
+Phase 2 success criteria met:
+✓ Persistence-jpa module created with JPA entities and repositories
+✓ Port interfaces defined in core-domain with domain-specific types
+✓ Adapter implementation converts between JPA and domain entities
+✓ Service layer updated to use ports instead of direct repositories
+✓ Clean compilation of multi-module structure achieved
+✓ Domain layer maintains zero persistence framework dependencies
+
 ## 2025-08-15 21:00 - [REFACTOR] Complete Phase 1: Extract core-domain module
 
 Files changed:

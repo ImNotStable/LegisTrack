@@ -35,6 +35,9 @@ dependencies {
     // Core domain module
     implementation(project(":core-domain"))
     
+    // Persistence module
+    implementation(project(":persistence-jpa"))
+    
     // Spring
     implementation(libs.bundles.spring.starters)
 

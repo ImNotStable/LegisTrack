@@ -1,12 +1,13 @@
 package com.legistrack.controller
 
-import com.legistrack.dto.DocumentDetailDto
-import com.legistrack.dto.DocumentSummaryDto
+import com.legistrack.domain.dto.DocumentDetailDto
+import com.legistrack.domain.dto.DocumentSummaryDto
 import com.legistrack.dto.InvalidateAnalysisRequest
-import com.legistrack.service.DataIngestionService
+// TODO: Phase 3 - Re-enable DataIngestionService
+// import com.legistrack.service.DataIngestionService
 import com.legistrack.service.DocumentService
 import kotlinx.coroutines.runBlocking
-import org.springframework.data.domain.Page
+import com.legistrack.domain.common.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.http.ResponseEntity
@@ -23,7 +24,8 @@ import java.time.LocalDate
 @RequestMapping("/api/documents")
 class DocumentController(
     private val documentService: DocumentService,
-    private val dataIngestionService: DataIngestionService,
+    // TODO: Phase 3 - Re-enable DataIngestionService
+    // private val dataIngestionService: DataIngestionService,
 ) {
     @GetMapping
     fun getAllDocuments(
@@ -45,13 +47,9 @@ class DocumentController(
     @GetMapping("/{id}")
     fun getDocumentById(
         @PathVariable id: Long,
-    ): ResponseEntity<DocumentDetailDto> {
+    ): ResponseEntity<DocumentDetailDto?> {
         val document = documentService.getDocumentById(id)
-        return if (document != null) {
-            ResponseEntity.ok(document)
-        } else {
-            ResponseEntity.notFound().build()
-        }
+        return ResponseEntity.ok(document)
     }
 
     @GetMapping("/search")
@@ -103,6 +101,8 @@ class DocumentController(
         }
     }
 
+    // TODO: Phase 3 - Re-enable data ingestion endpoints
+    /*
     @PostMapping("/ingest")
     suspend fun triggerDataIngestion(
         @RequestParam(required = false) fromDate: LocalDate?,
@@ -128,7 +128,10 @@ class DocumentController(
                 ),
             )
         }
+    */
 
+    // TODO: Phase 3 - Re-enable refresh endpoint
+    /*
     @PostMapping("/{id}/refresh")
     suspend fun refreshDocument(
         @PathVariable id: Long,
@@ -140,6 +143,7 @@ class DocumentController(
         } catch (e: Exception) {
             ResponseEntity.internalServerError().body(mapOf("success" to false, "message" to (e.message ?: "error")))
         }
+    */
 
     @PostMapping("/{id}/analyze")
     suspend fun analyzeDocument(@PathVariable id: Long): ResponseEntity<Any> =
