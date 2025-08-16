@@ -15,7 +15,7 @@ This document contains three major improvement initiatives for LegisTrack:
 **Current Status**: All phases are in planning stage (⬜ Not Started). Priority: Complete Phase 0 baseline capture first.
 
 **Overall Progress**: 
-- 🏗️ Modularization: 1/11 phases complete (9%)
+- 🏗️ Modularization: 2/11 phases complete (18%)
 - ⚡ Document Loading: 0/9 phases complete (0%)  
 - 🐳 Docker Runtime: 0/7 phases complete (0%)
 
@@ -142,7 +142,7 @@ Conventions:
 | Phase | Focus | Key Actions | Exit Criteria | Status |
 |-------|-------|-------------|---------------|--------|
 | 0 | Prep Baseline | Record build/test metrics; introduce ports (interfaces only); add ArchUnit baseline (ignored) | Metrics captured; ports compile | ✅ Complete |
-| 1 | Extract core-domain | Create module; move pure models & domain services; add mapping stubs | No Spring deps in core-domain | ⬜ Not Started |
+| 1 | Extract core-domain | Create module; move pure models & domain services; add mapping stubs | No Spring deps in core-domain | ✅ Complete |
 | 2 | Extract persistence-jpa | Move entities/repositories + Flyway; implement repository ports; add mappers | All persistence tests green | ⬜ Not Started |
 | 3 | External adapters | Split Congress & Ollama adapters; centralize HTTP config in common-infra | Ports implemented; old services removed | ⬜ Not Started |
 | 4 | Ingestion module | Move ingestion orchestration & schedulers; replace direct repo calls with ports | Ingestion tests pass; api still functional | ⬜ Not Started |
@@ -216,8 +216,8 @@ CI Pipeline Stages (future refinement):
 - [x] Record current backend full build time (cold & warm)
 - [x] Add initial ports (CongressPort, AiModelPort, DocumentRepositoryPort) inside existing module
 - [x] Add ArchUnit dependency & baseline test (ignore failures for now)
-- [ ] Create CHANGES.md entry `[REFACTOR] Begin modularization Phase 0`
-- [ ] Commit baseline metrics in this section
+- [x] Create CHANGES.md entry `[REFACTOR] Begin modularization Phase 0`
+- [x] Commit baseline metrics in this section
 
 ### 11.1 Baseline Capture Procedure
 

@@ -1,3 +1,37 @@
+## 2025-08-15 21:00 - [REFACTOR] Complete Phase 1: Extract core-domain module
+
+Files changed:
+- backend/settings.gradle.kts (added core-domain module)
+- backend/build.gradle.kts (added core-domain dependency)
+- backend/core-domain/ (new module with domain-only dependencies)
+- backend/core-domain/src/main/kotlin/com/legistrack/domain/entity/ (pure domain entities without JPA)
+- backend/core-domain/src/main/kotlin/com/legistrack/domain/dto/ (domain DTOs)
+- backend/core-domain/src/main/kotlin/com/legistrack/domain/service/ (domain service interface and implementation)
+- backend/core-domain/src/main/kotlin/com/legistrack/domain/mapper/ (entity-DTO mapping utilities)
+- backend/core-domain/src/main/kotlin/com/legistrack/domain/annotation/ (domain annotations)
+- TODO.md (updated Phase 1 status and progress tracking)
+
+Description:
+Successfully extracted the core-domain module as the first step in modularizing the monolithic backend. Created pure domain entities (Document, Sponsor, DocumentSponsor, DocumentAction, AiAnalysis) without JPA annotations or Spring dependencies. Implemented domain service interface for business logic, mapping utilities for entity-DTO conversion, and comprehensive DTOs for API responses. The module has zero Spring dependencies (only Kotlin stdlib and Jackson), establishing a clean domain layer foundation.
+
+Impact assessment:
+- Establishes clean separation between domain logic and infrastructure concerns ([ARCH][MAIN]).
+- Enables future persistence adapter extraction in Phase 2 without domain coupling.
+- Domain entities use Long references instead of JPA entity relationships for cleaner boundaries.
+- DocumentDomainService provides reusable business logic validation and processing.
+- Mapping utilities enable consistent entity-DTO conversion patterns.
+- Multi-module Gradle structure supports selective compilation and testing.
+
+Phase 1 success criteria met:
+✓ Core-domain module created with independent build configuration
+✓ Pure domain entities moved without persistence annotations
+✓ Domain DTOs and services implemented with business logic
+✓ Zero Spring dependencies in core-domain (verified via dependency analysis)
+✓ Main module successfully depends on and builds with core-domain
+✓ All existing tests pass with new modular structure
+
+Developer initials: AI, JH
+
 ## 2025-08-15 20:35 - [REFACTOR] Complete Phase 0: Baseline capture & port interfaces
 
 Files changed:

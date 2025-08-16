@@ -32,6 +32,9 @@ repositories {
 }
 
 dependencies {
+    // Core domain module
+    implementation(project(":core-domain"))
+    
     // Spring
     implementation(libs.bundles.spring.starters)
 

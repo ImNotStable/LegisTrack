@@ -21,4 +21,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "legistrack-backend"
 
+// Phase 1: Multi-module structure
+include("core-domain")
+
 // Keep settings lean for stability

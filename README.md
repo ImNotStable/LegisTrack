@@ -19,6 +19,281 @@ This README gives a concise overview, quickstart instructions, development hints
 - Frontend: React + TypeScript — user interface, document feed, detail and search views
 - Orchestration: `docker-compose.yml` for local development and quick deployments
 
+### High-Level Component Flow (Current → Target Modularization)
+
+```mermaid
+flowchart LR
+	subgraph External
+		CongressAPI[Congress.gov API] --> CongressAdapter[external-congress-adapter]
+		Ollama[Ollama Model] --> OllamaAdapter[external-ollama-adapter]
+	end
+	subgraph Core[Backend Modules]
+		CongressAdapter --> Ingestion[ingestion]
+		Ingestion --> Domain[(core-domain)]
+		OllamaAdapter --> AI[ai-analysis]
+		AI --> Domain
+		Ingestion --> Persistence[persistence-jpa]
+		AI --> Persistence
+		Domain --> API[api-rest]
+	end
+	Persistence --> DB[(PostgreSQL)]
+	API --> Frontend[React App]
+	CongressAdapter -. cache/retry .-> Cache[(Redis)]
+	OllamaAdapter -. cache/retry .-> Cache
+```
+
+### Dependency Direction (Enforced)
+
+```mermaid
+flowchart TB
+	core(core-domain)
+	persistence(persistence-jpa) --> core
+	ingestion(ingestion) --> core
+	ai(ai-analysis) --> core
+	congress(external-congress-adapter) --> core
+	ollama(external-ollama-adapter) --> core
+	common(common-infra) -->|provides config| congress
+	common --> ollama
+	common --> ingestion
+	common --> ai
+	api(api-rest) --> ingestion
+	api --> ai
+	api --> congress
+	api --> ollama
+	api --> persistence
+	api --> core
+```
+
+### Ingestion Sequence (Simplified)
+
+```mermaid
+sequenceDiagram
+	autonumber
+	participant S as Scheduler
+	participant ING as Ingestion Service
+	participant CP as CongressPort
+	participant P as Persistence Port
+	participant D as Domain
+	S->>ING: triggerIngestion(fromDate)
+	ING->>CP: fetchBills(updatedSince, page)
+	CP-->>ING: List<BillSummary>
+	loop per Bill
+		ING->>CP: fetchBillDetail(id)
+		CP-->>ING: BillDetail?
+		ING->>D: build Domain Document
+		D-->>ING: Document
+		ING->>P: save(Document)
+	end
+	ING-->>S: IngestionReport(stats)
+```
+
+### Frontend Feature Slices (Planned)
+
+```mermaid
+flowchart LR
+	app[app/ providers]
+	docs[features/documents]
+	ingest[features/ingestion]
+	analysis[features/analysis]
+	shared[shared/{ui,api,lib,config}]
+	entities[entities/{document,analysis}]
+	pages[pages/*]
+	widgets[widgets/*]
+	app --> docs --> pages
+	app --> ingest --> pages
+	app --> analysis --> pages
+	docs --> entities
+	ingest --> entities
+	analysis --> entities
+	docs --> shared
+	ingest --> shared
+	analysis --> shared
+	pages --> widgets --> shared
+```
+
+### ASCII Module Snapshot
+
+```
+core-domain
+	↑        ↑        ↑        ↑
+	│        │        │        │
+ingestion  ai-analysis  external-congress-adapter  external-ollama-adapter
+					\      |      /
+					 \     |     /
+					 persistence-jpa (JPA only)
+								↑
+						 api-rest (controllers & boot)
+```
+
+For the detailed migration phases and checklists see the modularization section in `TODO.md` (transitioning to a dedicated README subsection once phases progress).
+
+### Plaintext / Unicode Diagrams (Quick Reference)
+
+Module Dependency Matrix (rows depend on columns = X):
+
+```
+								core  persist  ingest  ai  congress  ollama  infra  api
+core-domain       -      -       -     -     -         -      -     -
+persistence-jpa   X      -       -     -     -         -      -     -
+ingestion         X      -       -     -     -         -      (cfg)  -
+ai-analysis       X      -       -     -     -         -      (cfg)  -
+ext-congress      X      -       -     -     -         -      (cfg)  -
+ext-ollama        X      -       -     -     -         -      (cfg)  -
+common-infra      -      -       -     -     -         -      -     -
+api-rest          X      X       X     X     X         X      X     -
+```
+
+Legend: `(cfg)` = consumes configuration beans only; `X` = compile-time dependency; `-` = no dependency.
+
+Phase Timeline (✓ = completed, □ = pending; initial state):
+```
+Phase 0: Ports & Baseline   □
+Phase 1: core-domain        □
+Phase 2: persistence-jpa    □
+Phase 3: Adapters split     □
+Phase 4: Ingestion module   □
+Phase 5: AI module          □
+Phase 6: api-rest isolate   □
+Phase 7: common-infra       □
+Phase 8: Testing alignment  □
+Phase 9: Harden boundaries  □
+Phase10: Cleanup/docs       □
+```
+
+High-Level Data Flow (plaintext):
+```
+Congress.gov -> Congress Adapter -> Ingestion -> Domain Models -> Persistence (Postgres)
+																								|                 ↑
+																								|                 |
+																				 AI Analysis <- AI Adapter (Ollama)
+																								|
+																								v
+																					 API (REST) -> Frontend (React)
+```
+
+Ingestion Sequence (compact):
+```
+Scheduler
+	| trigger
+	v
+Ingestion Service --fetch bills--> Congress Adapter --HTTP--> Congress.gov
+	|<--list summaries--|
+	| loop
+	|--fetch detail--> Congress Adapter
+	|<--detail?-------|
+	| build domain object
+	|--save--> Persistence (JPA/DB)
+	v
+Report stats
+```
+
+Caching & Retry Placement:
+```
+External Calls: Congress Adapter, Ollama Adapter
+Mechanisms: @Cacheable + Retry(backoff≥2s, jitter) configured in common-infra
+Cache Store: Redis (string keys: service-method_param1_...)
+```
+
+Frontend Feature Composition:
+```
+App Providers
+	├─ QueryClient
+	├─ Router
+	└─ Theme (future)
+			|
+			├─ Pages
+			|    ├─ DocumentsPage
+			|    |    └─ DocumentFeedWidget -> (features/documents components + queries)
+			|    └─ DocumentDetailPage -> (details + analysis panel)
+			└─ Other Future Pages
+```
+
+### Box-Drawing Diagrams (Detailed Views)
+
+Layered Backend Architecture:
+```
+┌─────────────────────────────────────────────────────────┐
+│                      api-rest (HTTP)                   │  ← Controllers / DTO mappers / Error envelopes
+├─────────────────────────────────────────────────────────┤
+│        ingestion            │         ai-analysis       │  ← Application services (use ports)
+├─────────────────────────────┴───────────────────────────┤
+│                   core-domain (pure)                    │  ← Domain models, value objects, events, invariants
+├─────────────────────────────────────────────────────────┤
+│                    persistence-jpa (JPA)                │  ← Repositories, entities, mappers
+├─────────────────────────────────────────────────────────┤
+│ external-congress-adapter │ external-ollama-adapter    │  ← Adapters implement ports (HTTP / AI)
+├─────────────────────────────────────────────────────────┤
+│                    common-infra (config)                │  ← Caching, retry, metrics, security
+└─────────────────────────────────────────────────────────┘
+```
+
+HTTP Request Lifecycle (example: GET /api/documents/{id}):
+```
+Client → Controller → Application Service (ingestion/ai if needed) → Domain Service → Repository Port → JPA Repo → DB
+		  ↓                          ↑
+		Mapper ← Domain Model ← Mapper
+```
+
+AI Analysis Pipeline:
+```
+┌────────────┐   ┌────────────────┐   ┌──────────────────┐   ┌───────────────┐   ┌────────────────┐
+│ Ingestion  │→→│ New Document    │→→│ ai-analysis Svc   │→→│ AiModelPort    │→→│ Ollama Adapter  │
+└────────────┘   └────────────────┘   └──────────────────┘   └──────┬────────┘   └──────┬─────────┘
+											   │                    │
+									 Prompt build / params             HTTP POST
+											   │                    │
+									     ┌────────▼────────┐           │
+									     │   Model Output  │◀──────────┘
+									     └────────┬────────┘
+											  Persist (Repository Port) → DB
+```
+
+Frontend Composition Overview:
+```
+┌───────────────┐    ┌────────────────┐    ┌────────────────┐
+│ app/providers │→→ │   pages/*       │→→ │ widgets/*       │
+└──────┬────────┘    └──────┬─────────┘    └──────┬─────────┘
+	 │                     │                     │
+	 │               ┌─────▼─────┐         ┌─────▼─────┐
+	 │               │ features/ │         │ shared/ui │
+	 │               └─────┬─────┘         └─────┬─────┘
+	 │                     │                     │
+	 │             ┌───────▼────────┐      ┌─────▼──────┐
+	 │             │ entities/*     │      │ shared/api │
+	 │             └────────────────┘      └────────────┘
+```
+
+Build & CI Flow (simplified future state):
+```
+┌──────────┐  lint/detekt  ┌──────────────┐  unit tests  ┌────────────────┐  integration  ┌─────────────┐  package  ┌────────────┐
+│ Checkout │─────────────▶│ Validate Job │────────────▶│  Unit / Port   │──────────────▶│ Integration │──────────▶│  API Image │
+└──────────┘               └──────────────┘             └────────────────┘               └─────────────┘          └────────────┘
+																	│ publish
+																	▼
+															     Registry / Deploy
+```
+
+Organization Analogy (roles mapping example):
+```
+				┌───────────┐
+				│   API     │ (public interface / controllers)
+				└─────┬─────┘
+					│
+		  ┌───────────────┴───────────────┐
+		  │                               │
+	  ┌─────┴─────┐                   ┌─────┴─────┐
+	  │ Ingestion  │                   │  AI Svc   │
+	  └─────┬─────┘                   └─────┬─────┘
+		  │                               │
+	┌───────┴───────┐               ┌───────┴───────┐
+	│ Domain Logic  │               │   Ports       │
+┌─────┴─────┐   ┌─────┴─────┐         └───────────────┘
+│Persistence│   │ Adapters  │ (Congress/Ollama)
+└───────────┘   └───────────┘
+```
+
+
+
 Repository layout (top-level):
 
 - `backend/` — Kotlin/Spring code, Gradle build

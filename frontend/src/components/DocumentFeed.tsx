@@ -126,7 +126,7 @@ export const DocumentFeed: React.FC = () => {
           <DocumentCard key={document.id} document={document} />
         ))}
         {/* Sentinel for infinite scroll */}
-        <div ref={observerRef} />
+        <div ref={observerRef} className="h-1" aria-hidden="true" />
       </div>
 
       {/* Loading indicator for pagination */}

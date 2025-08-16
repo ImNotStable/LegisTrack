@@ -9,6 +9,7 @@ import com.legistrack.dto.external.GovInfoPackage
 import com.legistrack.dto.external.GovInfoSearchRequest
 import com.legistrack.dto.external.GovInfoSearchResponse
 import com.legistrack.dto.external.GovInfoSearchResult
+import com.fasterxml.jackson.databind.ObjectMapper
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -49,8 +50,9 @@ class ExternalApiServicesTest {
         congressApiService =
             CongressApiService(
                 webClient = mockWebClient,
+                objectMapper = ObjectMapper(),
                 apiKey = "test-key",
-                baseUrl = "https://api.congress.gov/v3",
+                baseUrl = "https://api.data.gov/congress/v3",
             )
 
         govInfoApiService =

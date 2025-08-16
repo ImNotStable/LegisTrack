@@ -39,7 +39,7 @@ spring:
 app:
   congress:
     api:
-      base-url: https://api.congress.gov/v3
+      base-url: https://api.data.gov/congress/v3
       key: test-congress-api-key
   
   govinfo:
