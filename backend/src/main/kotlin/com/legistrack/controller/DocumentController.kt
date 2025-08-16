@@ -2,7 +2,7 @@ package com.legistrack.controller
 
 import com.legistrack.domain.dto.DocumentDetailDto
 import com.legistrack.domain.dto.DocumentSummaryDto
-import com.legistrack.dto.InvalidateAnalysisRequest
+import com.legistrack.domain.dto.InvalidateAnalysisRequest
 // TODO: Phase 3 - Re-enable DataIngestionService
 // import com.legistrack.service.DataIngestionService
 import com.legistrack.service.DocumentService

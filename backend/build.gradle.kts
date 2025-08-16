@@ -199,3 +199,10 @@ dependencyManagement {
 }
 
 // Build performance monitoring (intentionally minimal)
+
+// Configure ktlint to ignore Gradle Kotlin scripts to avoid style noise during migration
+ktlint {
+    filter {
+        exclude("**/*.gradle.kts")
+    }
+}
