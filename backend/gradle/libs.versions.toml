@@ -17,6 +17,7 @@ lettuce = "6.3.2.RELEASE"
 h2 = "2.2.224"
 mockk = "1.13.13"
 springmockk = "4.0.2"
+archunit = "1.3.0"
 
 [libraries]
 # Spring Boot starters (managed by Spring BOM)
@@ -60,6 +61,7 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 springmockk = { module = "com.ninja-squad:springmockk", version.ref = "springmockk" }
 h2 = { module = "com.h2database:h2", version.ref = "h2" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 
 # BOMs
 spring-cloud-dependencies = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "spring-cloud" }

@@ -64,6 +64,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
     testImplementation(libs.springmockk)
+    testImplementation(libs.archunit.junit5)
     testRuntimeOnly(libs.h2)
 }
 

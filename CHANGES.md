@@ -1,3 +1,122 @@
+## 2025-08-15 20:35 - [REFACTOR] Complete Phase 0: Baseline capture & port interfaces
+
+Files changed:
+- backend/gradle/libs.versions.toml (added ArchUnit version 1.3.0)
+- backend/build.gradle.kts (added ArchUnit test dependency)
+- backend/src/main/kotlin/com/legistrack/port/ (new package with CongressPort, AiModelPort, DocumentRepositoryPort interfaces)
+- backend/src/test/kotlin/com/legistrack/ArchitectureTest.kt (baseline test with future rules commented out)
+- TODO.md (updated baseline metrics, marked Phase 0 complete, updated progress indicators)
+
+Description:
+Completed Phase 0 of the modularization plan by establishing baseline performance metrics and introducing port interfaces. Captured build timings (1.1s cold/1.0s warm backend, 7.3s frontend), added ArchUnit dependency with baseline test for future enforcement, and extracted port interfaces from existing services without breaking changes. Port interfaces (CongressPort, AiModelPort, DocumentRepositoryPort) define contracts for external dependencies and repository operations, enabling future adapter extraction in subsequent phases.
+
+Impact assessment:
+- Establishes measurable baseline for 35% build time reduction target ([PERF][REL]).
+- Introduces architectural boundaries preparation without runtime changes ([CORR][MAIN]).
+- ArchUnit baseline test provides violation detection framework for Phase 9 enforcement.
+- Port interfaces enable dependency inversion pattern for upcoming modular extraction.
+- Zero breaking changes; existing services unchanged, interfaces additive only.
+
+Phase 0 success criteria met:
+✓ Baseline metrics captured and documented in TODO.md
+✓ Port interfaces compile and integrate cleanly
+✓ ArchUnit dependency added with passing baseline test
+✓ No existing functionality affected
+
+Developer initials: AI, JH
+
+## 2025-08-15 19:55 - [REFACTOR] Add architecture diagrams & link from TODO
+## 2025-08-15 19:58 - [REFACTOR] Add plaintext/unicode architecture diagrams
+## 2025-08-15 20:02 - [REFACTOR] Add box-drawing architecture diagrams
+## 2025-08-15 20:05 - [REFACTOR] Refine modularization execution plan (TODO.md)
+## 2025-08-15 20:10 - [REFACTOR] Add document loading improvement plan
+## 2025-08-16 01:15 - [REFACTOR] Add Docker Runtime Stability Plan (TODO.md)
+
+Files changed:
+- TODO.md (added Docker Runtime Stability Plan section: observed issues, root cause hypotheses, remediation phases DR-1→DR-7, actions, metrics, risks, DoD, immediate next steps)
+
+Description:
+Introduced structured plan to remediate runtime startup issues surfaced in compose logs: Congress API 403 responses, Ollama model pull premature close, lack of model readiness gating, noisy repeated stack traces, and need for health indicators. Plan sequences improvements (baseline guardrails, graceful external error handling, resilient model bootstrap with retries & degraded mode, startup sequencing, health & monitoring, logging hygiene, documentation) without implementing code yet—keeping changes low risk and documentation-only.
+
+Impact assessment:
+- Enhances reliability & resilience roadmap ([REL]) by codifying phased actions (DR-1→DR-7).
+- Supports security & maintainability ([SEC][MAIN]) via secret tracking guardrails and reduced log noise.
+- No runtime changes yet; safe preparatory documentation aligning with existing priorities.
+
+Developer initials: AI, JH
+
+Files changed:
+- TODO.md (added Document Loading Improvement Plan section: metrics, phases DL-1→DL-9, backend optimizations, frontend prefetch strategy, risks, definition of done, immediate next steps)
+
+Description:
+Introduced a structured, phased optimization plan targeting backend query reduction (N+1 removal via batch fetch), payload minimization, caching, and frontend prefetch/ETag strategies to decrease document list latency and perceived load time. Aligns with performance & reliability priorities while documenting rollback and risk mitigations within existing markdown (no new files).
+
+Impact assessment:
+- Establishes clear KPIs (query count, P95 latency) improving performance focus ([PERF][REL]).
+- Reduces future ambiguity for implementation sequencing, supporting maintainability ([MAIN]).
+- No code changes yet; safe documentation-only addition.
+
+Developer initials: AI, JH
+
+
+Files changed:
+- TODO.md (added baseline capture procedure, port/mapping conventions, per-phase definitions of done, incremental test matrix, rollback triggers, naming/packaging rules, quick start operational checklist, metrics snapshot template)
+
+Description:
+Expanded actionable guidance for upcoming modularization to reduce ambiguity during phased extraction. Introduces measurable definitions of done, standardized naming and mapping practices, rollback triggers with thresholds, and a test matrix keyed to each phase. Enhances predictability and lowers coordination overhead while staying within existing documentation files (no new markdown created).
+
+Impact assessment:
+- Improves correctness and reliability ([CORR][REL]) by formalizing exit criteria and rollback conditions.
+- Enhances velocity ([VELO]) through clarified quick start steps and consistent naming.
+- No runtime changes; documentation-only, low risk.
+
+Developer initials: AI, JH
+
+
+Files changed:
+- README.md (added Box-Drawing Diagrams section: layered architecture, request lifecycle, AI pipeline, frontend composition, build & CI flow, organization analogy)
+- TODO.md (extended reference to new box-drawing diagrams section)
+
+Description:
+Expanded architecture documentation with Unicode box-drawing diagrams to provide higher-fidelity structural views that complement Mermaid and plaintext representations. These support quick cognition in terminals and code review tools lacking Mermaid rendering while maintaining single authoritative location (README) per documentation consolidation rules.
+
+Impact assessment:
+- Improves maintainability and onboarding speed ([MAIN][VELO]) via multiple appropriately-scoped visual abstractions.
+- No runtime or build impact.
+- Reinforces modular boundary intentions before implementation phases commence.
+
+Developer initials: AI, JH
+
+
+Files changed:
+- README.md (added Plaintext / Unicode Diagrams section: dependency matrix, phase timeline, data flow, ingestion sequence, caching & retry placement, frontend composition tree)
+- TODO.md (extended reference note to include plaintext/unicode diagrams)
+
+Description:
+Supplemented Mermaid visuals with monospace pipe/unicode diagrams for quick reference during code reviews where Mermaid rendering may not be available (e.g., terminal viewers, diff tools). Maintains single source in README; TODO kept action-oriented while linking to diagrams per documentation consolidation rules.
+
+Impact assessment:
+- Improves accessibility of system architecture in environments lacking Mermaid support ([MAIN][VELO]).
+- Zero runtime effect; documentation only.
+- Reinforces dependency and phase clarity without duplicating logic.
+
+Developer initials: AI, JH
+
+
+Files changed:
+- README.md (added Mermaid diagrams: high-level flow, dependency direction, ingestion sequence, frontend feature slices, ASCII snapshot)
+- TODO.md (added reference note pointing to visuals in README)
+
+Description:
+Introduced visual architecture representations to improve shared understanding of planned modularization (multi-module backend + feature-sliced frontend) without duplicating narrative content in multiple markdown files. Diagrams clarify dependency direction constraints, ingestion flow, and upcoming frontend feature boundaries. `TODO.md` remains action-focused, deferring visuals to canonical README per documentation consolidation rules.
+
+Impact assessment:
+- Enhances maintainability and onboarding speed ([MAIN][VELO]) via clear system mental model.
+- No runtime or build changes; purely documentation.
+- Reinforces intended module dependency acyclicity before refactor implementation phases.
+
+Developer initials: AI, JH
+
 ## 2025-08-15 19:25 - [BUGFIX] Commit Gradle wrapper JAR & refine ignore rules
 
 Files changed:
