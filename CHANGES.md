@@ -1,3 +1,19 @@
+## 2025-08-15 19:20 - [BUGFIX] Backend docker build fixes (settings plugin resolution & duplicate imports)
+
+Files changed:
+- backend/settings.gradle.kts (replace version catalog plugin reference with explicit Foojay plugin version 0.8.0)
+- backend/src/main/kotlin/com/legistrack/controller/LegislativeApiController.kt (remove duplicate Spring imports causing ambiguity)
+
+Description:
+Resolved backend Docker image build failures after frontend fixes. Initial failure due to `settings.gradle.kts` referencing `libs.plugins.foojay.resolver.convention` during settings evaluation inside container before version catalog was available, leading to `Unresolved reference: libs`. Applied pragmatic exception (documented) by specifying the Foojay resolver plugin with explicit version `0.8.0` directly in `settings.gradle.kts` (avoids blocking build while retaining catalog usage elsewhere). Subsequent compilation failure stemmed from duplicated Spring Web annotation imports in `LegislativeApiController` producing ambiguous import errors for `RestController`, `GetMapping`, `RequestParam`, `PathVariable`, and `ResponseEntity`. Cleaned up imports to unique set.
+
+Impact assessment:
+- Restores successful backend Gradle build within Docker, unblocking full `docker compose build` pipeline.
+- Minor, contained policy exception (inline plugin version) justified to restore build; future improvement could reintroduce catalog indirection via settings plugin management if needed.
+- Eliminates redundant imports improving maintainability ([MAIN]) without functional changes.
+
+Developer initials: AI, JH
+
 ## 2025-08-15 19:05 - [BUGFIX] Fix docker compose build failure (frontend npm ci lockfile mismatch)
 
 Files changed:

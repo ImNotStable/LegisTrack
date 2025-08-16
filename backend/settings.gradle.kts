@@ -5,8 +5,11 @@ pluginManagement {
     }
 }
 
+// USING explicit version here because version catalogs are not yet available at settings script compilation
+// time inside minimal Docker build context. This is a documented, single-version exception to the "no raw versions"
+// rule to restore build operability; catalog still governs all dependency/plugin versions in build scripts.
 plugins {
-    id(libs.plugins.foojay.resolver.convention.get().pluginId) version libs.versions.foojay.get()
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
 }
 
 dependencyResolutionManagement {
