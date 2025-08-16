@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { DocumentCard } from './DocumentCard';
 import { LoadingSpinner } from './LoadingSpinner';
-import { useDocuments, useInfiniteDocuments } from '../hooks/useApi';
+import { useInfiniteDocuments } from '../hooks/useApi';
 import { useToast } from './Toast';
 
 export const DocumentFeed: React.FC = () => {
+  // page state retained only for potential future manual pagination; currently infinite scroll handles pages implicitly
   const [page, setPage] = useState(0);
   const [sortBy, setSortBy] = useState('introductionDate');
   const [sortDir, setSortDir] = useState('desc');
   
-  const { data, isLoading, error, isFetching, fetchNextPage, hasNextPage } = useInfiniteDocuments(20, sortBy, sortDir);
+  const { data, isLoading, error, isFetching, fetchNextPage } = useInfiniteDocuments(20, sortBy, sortDir);
   const toast = useToast();
 
   useEffect(() => {
@@ -82,6 +83,7 @@ export const DocumentFeed: React.FC = () => {
           
           <div className="flex items-center space-x-4">
             <select
+              aria-label="Sort documents"
               value={`${sortBy}_${sortDir}`}
               onChange={(e) => {
                 const [field, direction] = e.target.value.split('_');

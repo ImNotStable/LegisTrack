@@ -1,3 +1,36 @@
+## 2025-08-15 19:05 - [BUGFIX] Fix docker compose build failure (frontend npm ci lockfile mismatch)
+
+Files changed:
+- frontend/package-lock.json (regenerated to sync with pinned exact versions in package.json)
+- frontend/.dockerignore (added to reduce build context size)
+
+Description:
+Addressed frontend image build failure during `npm ci` caused by stale lockfile containing caret-ranged and older dependency versions (e.g. typescript 4.9.5) conflicting with newly pinned exact versions in `package.json` (e.g. typescript 5.4.5, tailwindcss 3.3.6). Regenerated `package-lock.json` after removing outdated file to restore manifest-lock consistency, enabling deterministic Docker builds. Added `.dockerignore` to exclude `node_modules`, build artifacts, VCS, and IDE metadata from Docker build context for performance and to avoid accidental inclusion. Aligns with reproducible build and performance guidance ([CORR][PERF][MAIN]).
+
+Impact assessment:
+- Restores successful `docker compose build` (frontend stage) by eliminating lockfile mismatch.
+- Ensures deterministic dependency graph matching security & stability rules; reduces future drift risk.
+- Smaller Docker build context improves build performance and reduces potential leakage of local-only files.
+
+Developer initials: AI, JH
+
+## 2025-08-15 19:07 - [BUGFIX] Frontend dependency compatibility & lint build fix
+
+Files changed:
+- frontend/package.json (align TypeScript 4.9.5 + msw 1.3.2 with react-scripts 5 peerOptional constraint)
+- frontend/package-lock.json (regenerated)
+- frontend/src/components/DocumentFeed.tsx (removed unused vars; added aria-label for accessibility)
+
+Description:
+Resolved continuing Docker build failures after lockfile regeneration caused by peer dependency conflicts: `react-scripts@5.0.1` declares optional peer `typescript ^3.2.1 || ^4`, making TS 5.x incompatible. Initial attempt to force newer TS led to `npm ci` ERESOLVE errors. Downgraded to last 4.x-compatible TypeScript (4.9.5) and reverted `msw` to 1.3.2 to satisfy its peer range (<=5.2.x previously) while retaining functionality. Addressed subsequent CI build lint failure (unused variables and missing accessible name) by removing unused imports/destructured values and adding `aria-label` to sort select. Ensures reproducible, successful frontend image builds within container environment without disabling peer dependency integrity checks, aligning with correctness and reliability priorities ([CORR][REL][MAIN]).
+
+Impact assessment:
+- Restores successful `npm ci` and production build in Docker.
+- Keeps dependency graph within supported peer ranges to avoid latent runtime issues.
+- Improves accessibility compliance (ARIA label) and eliminates lint warnings that halted CI build.
+
+Developer initials: AI, JH
+
 ## 2025-08-15 19:42 - [BUGFIX] Resolve multiple open issues across backend and frontend
 
 Files changed:
