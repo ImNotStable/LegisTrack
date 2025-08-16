@@ -1,3 +1,19 @@
+## 2025-08-15 19:25 - [BUGFIX] Commit Gradle wrapper JAR & refine ignore rules
+
+Files changed:
+- .gitignore (reordered patterns so un-ignore for wrapper jar precedes backend jar exclusion; added explanatory comment)
+- backend/gradle/wrapper/gradle-wrapper.jar (added to VCS for reproducible builds)
+
+Description:
+Gradle wrapper JAR wasn't tracked because broad `backend/**/*.jar` ignore pattern overrode earlier un-ignore lines. Adjusted ordering so explicit `!backend/gradle/wrapper/gradle-wrapper.jar` follows the broad ignores, re-including the wrapper while still excluding build output jars. Added wrapper JAR to repository to guarantee consistent Gradle version resolution in CI/CD and container builds per reproducibility and velocity guidelines without requiring pre-installed Gradle. No runtime code changes.
+
+Impact assessment:
+- Ensures portable, reproducible builds across environments (containers, CI) ([CORR][REL][MAIN]).
+- Prevents future build failures if Gradle version mismatch occurs externally.
+- Maintains exclusion of other generated jars to keep repo lean.
+
+Developer initials: AI, JH
+
 ## 2025-08-15 19:20 - [BUGFIX] Backend docker build fixes (settings plugin resolution & duplicate imports)
 
 Files changed:

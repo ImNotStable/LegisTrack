@@ -165,11 +165,13 @@ replay_pid*
 *.zip
 *.tar.gz
 *.rar
+backend/build/libs/
+backend/**/*.war
+backend/**/*.jar
+
+# Allow committed Gradle wrapper JAR (required for reproducible builds) - placed after broad ignores to re-include
 !gradle-wrapper.jar
 !backend/gradle/wrapper/gradle-wrapper.jar
-backend/build/libs/
-backend/**/*.jar
-backend/**/*.war
 
 # Maven (if used)
 .mvn/
