@@ -1,3 +1,5 @@
+// Root build acts as aggregator after Phase 6 (api-rest executable module extracted)
+// Keep Spring Boot + Kotlin plugins to ensure consistent plugin classpath across modules.
 plugins {
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
@@ -6,10 +8,7 @@ plugins {
     alias(libs.plugins.kotlin.plugin.jpa)
     alias(libs.plugins.kotlin.plugin.allopen)
     alias(libs.plugins.kotlin.plugin.noarg)
-    alias(libs.plugins.graalvm.native)
-    alias(libs.plugins.spring.boot.aot)
     alias(libs.plugins.ktlint)
-    alias(libs.plugins.detekt)
 }
 
 group = "com.legistrack"
@@ -31,47 +30,25 @@ repositories {
     mavenCentral()
 }
 
-dependencies {
-    // Core domain module
-    implementation(project(":core-domain"))
-    
-    // Persistence module
-    implementation(project(":persistence-jpa"))
-    
-    // Spring
-    implementation(libs.bundles.spring.starters)
-
-    // JSON
-    implementation(libs.bundles.jackson)
-
-    // Kotlin Support
-    implementation(libs.bundles.kotlin)
-
-    // Database
-    implementation(libs.bundles.db)
-    runtimeOnly(libs.postgresql)
-
-    // Redis
-    implementation(libs.bundles.redis)
-
-    // Reactive WebClient without enabling reactive web server
-    implementation(libs.bundles.http.client)
-
-    // Development
-    developmentOnly(libs.spring.boot.devtools)
-    annotationProcessor(libs.spring.boot.config.processor)
-
-    // Testing
-    testImplementation(libs.spring.boot.starter.test) {
-        exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
+// Make root backend project a pure aggregator: exclude its own source directories so
+// legacy code (controllers, services, DTOs, etc.) is no longer compiled. Physical
+// deletion is handled separately; this guarantees the build ignores any lingering files.
+sourceSets {
+    named("main") {
+        kotlin.setSrcDirs(emptyList<File>())
+        resources.setSrcDirs(emptyList<File>())
     }
-    testImplementation(libs.testcontainers.postgresql)
-    testImplementation(libs.testcontainers.junit.jupiter)
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.mockk)
-    testImplementation(libs.springmockk)
+    named("test") {
+        kotlin.setSrcDirs(emptyList<File>())
+        resources.setSrcDirs(emptyList<File>())
+    }
+}
+
+dependencies {
+    // Root project has no production sources; keep test dependencies for potential aggregate tests/ArchUnit
     testImplementation(libs.archunit.junit5)
-    testRuntimeOnly(libs.h2)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 tasks {
@@ -108,15 +85,9 @@ tasks {
         }
     }
 
-    bootJar {
-        archiveFileName.set("${project.name}.jar")
-        launchScript()
-        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    }
-
-    jar {
-        enabled = false
-    }
+    // Disable executable packaging at root (handled in api-rest module)
+    withType<org.springframework.boot.gradle.tasks.bundling.BootJar> { enabled = false }
+    jar { enabled = false }
 
     // Build performance optimizations
     withType<JavaCompile> {
@@ -130,47 +101,28 @@ tasks {
         )
     }
 
-    // AOT processing optimization
-    named("processAot") {
-        doLast {
-            // AOT processing completed
-        }
-    }
 
-    // Aggregate checks
+    // Aggregate checks (temporarily exclude detekt until toolchain aligns with Kotlin 2.1)
     named("check") {
-        dependsOn("detekt", "ktlintCheck")
+        dependsOn("ktlintCheck")
     }
 }
 
 // Detekt static analysis
-detekt {
-    buildUponDefaultConfig = true
-    allRules = false
-    config.setFrom(files("config/detekt/detekt.yml"))
-}
-
-tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
-    jvmTarget = "21"
-}
+// NOTE: Detekt configuration commented out pending upgrade to version compatible with Kotlin 2.1
+// detekt {
+//     buildUponDefaultConfig = true
+//     allRules = false
+//     config.setFrom(files("config/detekt/detekt.yml"))
+// }
+// tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+//     jvmTarget = "21"
+// }
 
 // Remove duplicate check dependency declarations
 
 // GraalVM Native Image configuration
-graalvmNative {
-    binaries {
-        named("main") {
-            imageName.set("legistrack")
-            mainClass.set("com.legistrack.LegisTrackApplicationKt")
-            debug.set(false)
-            verbose.set(false)
-            fallback.set(false)
-            sharedLibrary.set(false)
-            quickBuild.set(false)
-        }
-    }
-    toolchainDetection.set(false)
-}
+// Native image configuration relocated to api-rest module (future Phase 7 common-infra consolidation)
 
 // AllOpen plugin configuration for Spring
 allOpen {
@@ -200,9 +152,11 @@ dependencyManagement {
 
 // Build performance monitoring (intentionally minimal)
 
-// Configure ktlint to ignore Gradle Kotlin scripts to avoid style noise during migration
+// Ktlint configuration (re-enabled)
 ktlint {
     filter {
-        exclude("**/*.gradle.kts")
+        exclude("**/*.gradle.kts") // keep build scripts out of style checks
     }
 }
+
+// AOT related tasks removed from root after api-rest extraction

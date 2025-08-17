@@ -27,4 +27,17 @@ include("core-domain")
 // Phase 2: Persistence layer
 include("persistence-jpa")
 
+// Phase 3: External adapters (Congress + Ollama)
+include("external-congress-adapter")
+include("external-ollama-adapter")
+
+// Phase 4: Ingestion module
+include("ingestion")
+
+// Phase 5: AI analysis module
+include("ai-analysis")
+
+// Phase 6: API REST interface module (executable Spring Boot app)
+include("api-rest")
+
 // Keep settings lean for stability

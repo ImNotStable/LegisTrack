@@ -10,10 +10,16 @@ import org.springframework.stereotype.Repository
 interface AiAnalysisRepository : JpaRepository<AiAnalysis, Long> {
     fun findByDocumentId(documentId: Long): List<AiAnalysis>
 
+    fun findByDocumentIdOrderByCreatedAtDesc(documentId: Long): List<AiAnalysis>
+
     fun findByDocumentIdAndIsValid(
         documentId: Long,
         isValid: Boolean,
     ): List<AiAnalysis>
+
+    fun findByDocumentIdAndIsValidTrueOrderByCreatedAtDesc(documentId: Long): List<AiAnalysis>
+
+    fun findFirstByDocumentIdAndIsValidTrueOrderByCreatedAtDesc(documentId: Long): AiAnalysis?
 
     @Modifying
     @Query("UPDATE AiAnalysis a SET a.isValid = false WHERE a.id = :analysisId")
@@ -23,6 +29,12 @@ interface AiAnalysisRepository : JpaRepository<AiAnalysis, Long> {
         documentId: Long,
         isValid: Boolean,
     ): Boolean
+
+    fun existsByDocumentIdAndIsValidTrue(documentId: Long): Boolean
+
+    fun deleteByDocumentId(documentId: Long)
+
+    fun countByIsValidTrue(): Long
 
     @Query("SELECT COUNT(DISTINCT a.document.id) FROM AiAnalysis a WHERE a.isValid = true")
     fun countDocumentsWithValidAnalysis(): Long

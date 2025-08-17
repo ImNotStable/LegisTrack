@@ -133,14 +133,28 @@ object DocumentMapper {
         val independent = sponsors.count { it.party?.lowercase() == "independent" || it.party?.lowercase() == "i" }
         val other = total - democratic - republican - independent
 
+        var demPct = if (total > 0) (democratic.toDouble() / total) * 100 else 0.0
+        var repPct = if (total > 0) (republican.toDouble() / total) * 100 else 0.0
+
+        // Clamp to valid numeric domain (safety against any future inconsistent data states)
+        demPct = demPct.coerceIn(0.0, 100.0)
+        repPct = repPct.coerceIn(0.0, 100.0)
+        // Ensure combined does not exceed 100 (scale down proportionally if overflow)
+        val combined = demPct + repPct
+        if (combined > 100.0 && combined > 0) {
+            val scale = 100.0 / combined
+            demPct = demPct * scale
+            repPct = repPct * scale
+        }
+
         return PartyBreakdownDto(
             democratic = democratic,
             republican = republican,
             independent = independent,
-            other = other,
+            other = other.coerceAtLeast(0),
             total = total,
-            democraticPercentage = if (total > 0) (democratic.toDouble() / total) * 100 else 0.0,
-            republicanPercentage = if (total > 0) (republican.toDouble() / total) * 100 else 0.0
+            democraticPercentage = demPct,
+            republicanPercentage = repPct
         )
     }
 

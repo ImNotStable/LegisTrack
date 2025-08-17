@@ -134,6 +134,7 @@ class EntityDomainMapper {
 
     /**
      * Converts domain AiAnalysis entity to JPA AiAnalysis entity.
+     * Requires a JPA document to establish the relationship.
      */
     fun toJpaAiAnalysis(domainAiAnalysis: DomainAiAnalysis, jpaDocument: JpaDocument): JpaAiAnalysis = JpaAiAnalysis(
         id = domainAiAnalysis.id,
@@ -147,4 +148,24 @@ class EntityDomainMapper {
         createdAt = domainAiAnalysis.createdAt,
         updatedAt = domainAiAnalysis.updatedAt
     )
+
+    /**
+     * Converts domain AiAnalysis entity to JPA AiAnalysis entity.
+     * This is a simplified version for the adapter pattern.
+     */
+    fun toAiAnalysisEntity(domainAiAnalysis: DomainAiAnalysis): JpaAiAnalysis {
+        // Create a stub document with just the ID for the relationship
+        val stubDocument = JpaDocument(
+            id = domainAiAnalysis.documentId,
+            billId = "", // stub value
+            title = "" // stub value
+        )
+        return toJpaAiAnalysis(domainAiAnalysis, stubDocument)
+    }
+
+    /**
+     * Converts JPA AiAnalysis entity to domain AiAnalysis entity.
+     * This is an alias for consistency with the adapter pattern.
+     */
+    fun toAiAnalysisDomain(jpaAiAnalysis: JpaAiAnalysis): DomainAiAnalysis = toDomainAiAnalysis(jpaAiAnalysis)
 }

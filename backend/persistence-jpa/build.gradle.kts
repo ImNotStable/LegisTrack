@@ -1,8 +1,7 @@
 plugins {
-    // Library module: no Spring Boot plugin, only dependency management
-    id("io.spring.dependency-management") version "1.1.6"
-    kotlin("jvm") version "2.1.0"
-    kotlin("plugin.jpa") version "2.1.0"
+    alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.plugin.jpa)
 }
 
 group = "com.legistrack"
