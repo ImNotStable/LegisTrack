@@ -1,412 +1,469 @@
 # LegisTrack
 
-LegisTrack is an AI-driven legislative document tracking and exploration platform. It combines a Kotlin/Spring backend, a React + TypeScript frontend, and Docker Compose orchestration to ingest, analyze, and surface legislative documents using modern AI techniques such as natural language processing, semantic embeddings, summarization, and semantic search.
+AI-powered legislative document tracking and analysis platform that combines real-time data ingestion with intelligent document analysis.
 
-This README gives a concise overview, quickstart instructions, development hints, and notes for contributors.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Kotlin](https://img.shields.io/badge/kotlin-%237F52FF.svg?style=flat&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Spring Boot](https://img.shields.io/badge/spring-%236DB33F.svg?style=flat&logo=spring&logoColor=white)](https://spring.io/projects/spring-boot)
+[![React](https://img.shields.io/badge/react-%2320232a.svg?style=flat&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-## Key features (AI-driven)
-- Document ingestion pipeline with metadata extraction and normalization
-- NLP-powered processing: language detection, tokenization, named-entity extraction, and classification
-- Embeddings and semantic search for meaning-based retrieval across documents
-- Summarization and question-answering over documents (extractive/abstractive)
-- AI-assisted UI: relevance scoring, highlight extraction, and suggested follow-ups
+[Quick Start](#quick-start) • [Architecture](#architecture) • [API Documentation](#api-documentation) • [Development](#development)
 
-> Note: Specific AI models and providers are pluggable. See the `backend` configuration and environment variables for model/provider selection.
+## Overview
+
+LegisTrack is a comprehensive legislative intelligence platform that automates document tracking and provides AI-powered analysis of legislative activities. The platform integrates with official government APIs and uses local AI models for privacy-conscious document analysis.
+
+### Key Features
+
+- **Automated Data Ingestion**: Real-time collection from Congress.gov and GovInfo APIs
+- **AI-Powered Analysis**: Local LLM integration via Ollama for document analysis
+- **Advanced Search**: Comprehensive document search with filtering and pagination
+- **Analytics Dashboard**: Summary analytics and trend visualization
+- **Modern Architecture**: Clean hexagonal architecture with modular design
+- **Container-Ready**: Complete Docker Compose setup for easy deployment
+
+
+
+## Technology Stack
+
+**Backend**
+- Kotlin + Spring Boot (WebFlux)
+- PostgreSQL with Flyway migrations
+- Redis caching
+- Ollama for AI analysis
+
+**Frontend**
+- TypeScript + React 18
+- Tailwind CSS
+- React Query for state management
+
+**Infrastructure**
+- Docker & Docker Compose
+- Nginx reverse proxy
+- Hexagonal architecture pattern
 
 ## Architecture
 
-- Backend: Kotlin + Spring (Gradle) — document ingestion, AI orchestration, REST API
-- Frontend: React + TypeScript — user interface, document feed, detail and search views
-- Orchestration: `docker-compose.yml` for local development and quick deployments
-
-### High-Level Component Flow (Current → Target Modularization)
+LegisTrack follows a hexagonal architecture pattern with clear separation between domain logic and infrastructure concerns.
 
 ```mermaid
-flowchart LR
-	subgraph External
-		CongressAPI[Congress.gov API] --> CongressAdapter[external-congress-adapter]
-		Ollama[Ollama Model] --> OllamaAdapter[external-ollama-adapter]
-	end
-	subgraph Core[Backend Modules]
-		CongressAdapter --> Ingestion[ingestion]
-		Ingestion --> Domain[(core-domain)]
-		OllamaAdapter --> AI[ai-analysis]
-		AI --> Domain
-		Ingestion --> Persistence[persistence-jpa]
-		AI --> Persistence
-		Domain --> API[api-rest]
-	end
-	Persistence --> DB[(PostgreSQL)]
-	API --> Frontend[React App]
-	CongressAdapter -. cache/retry .-> Cache[(Redis)]
-	OllamaAdapter -. cache/retry .-> Cache
+graph TB
+    subgraph "Frontend"
+        UI[React UI]
+    end
+    
+    subgraph "API Gateway"
+        NGINX[Nginx Proxy]
+    end
+    
+    subgraph "Backend Services"
+        API[REST Controllers]
+        DOMAIN[Core Domain]
+        INGEST[Ingestion Service]
+        AI[AI Analysis Service]
+    end
+    
+    subgraph "Data Layer"
+        DB[(PostgreSQL)]
+        CACHE[(Redis)]
+    end
+    
+    subgraph "External APIs"
+        CONGRESS[Congress.gov]
+        OLLAMA[Ollama LLM]
+    end
+    
+    UI --> NGINX
+    NGINX --> API
+    API --> DOMAIN
+    API --> CACHE
+    DOMAIN --> DB
+    INGEST --> CONGRESS
+    AI --> OLLAMA
 ```
 
-### Dependency Direction (Enforced)
+### Design Principles
 
-```mermaid
-flowchart TB
-	core(core-domain)
-	persistence(persistence-jpa) --> core
-	ingestion(ingestion) --> core
-	ai(ai-analysis) --> core
-	congress(external-congress-adapter) --> core
-	ollama(external-ollama-adapter) --> core
-	common(common-infra) -->|provides config| congress
-	common --> ollama
-	common --> ingestion
-	common --> ai
-	api(api-rest) --> ingestion
-	api --> ai
-	api --> congress
-	api --> ollama
-	api --> persistence
-	api --> core
-```
+- **Hexagonal Architecture**: Clean separation between business logic and infrastructure
+- **Reactive Programming**: Non-blocking I/O with Spring WebFlux
+- **Modular Design**: Multi-module Gradle structure for maintainability
+- **Local AI Processing**: Privacy-conscious analysis using Ollama
 
-### Ingestion Sequence (Simplified)
-
-```mermaid
-sequenceDiagram
-	autonumber
-	participant S as Scheduler
-	participant ING as Ingestion Service
-	participant CP as CongressPort
-	participant P as Persistence Port
-	participant D as Domain
-	S->>ING: triggerIngestion(fromDate)
-	ING->>CP: fetchBills(updatedSince, page)
-	CP-->>ING: List<BillSummary>
-	loop per Bill
-		ING->>CP: fetchBillDetail(id)
-		CP-->>ING: BillDetail?
-		ING->>D: build Domain Document
-		D-->>ING: Document
-		ING->>P: save(Document)
-	end
-	ING-->>S: IngestionReport(stats)
-```
-
-### Frontend Feature Slices (Planned)
-
-```mermaid
-flowchart LR
-	app[app/ providers]
-	docs[features/documents]
-	ingest[features/ingestion]
-	analysis[features/analysis]
-	shared[shared/{ui,api,lib,config}]
-	entities[entities/{document,analysis}]
-	pages[pages/*]
-	widgets[widgets/*]
-	app --> docs --> pages
-	app --> ingest --> pages
-	app --> analysis --> pages
-	docs --> entities
-	ingest --> entities
-	analysis --> entities
-	docs --> shared
-	ingest --> shared
-	analysis --> shared
-	pages --> widgets --> shared
-```
-
-### ASCII Module Snapshot
+## Project Structure
 
 ```
-core-domain
-	↑        ↑        ↑        ↑
-	│        │        │        │
-ingestion  ai-analysis  external-congress-adapter  external-ollama-adapter
-					\      |      /
-					 \     |     /
-					 persistence-jpa (JPA only)
-								↑
-						 api-rest (controllers & boot)
+LegisTrack/
+├── backend/                   # Spring Boot application
+│   ├── core-domain/           # Domain models and business logic
+│   ├── api-rest/              # REST controllers and web layer
+│   ├── persistence-jpa/       # Database entities and repositories
+│   ├── ingestion/             # Data ingestion services
+│   ├── ai-analysis/           # AI analysis orchestration
+│   └── external-*-adapter/    # External API integrations
+├── frontend/                  # React TypeScript application
+│   ├── src/components/        # UI components
+│   ├── src/services/          # API client
+│   └── src/types/             # TypeScript definitions
+└── docker-compose.yml        # Development stack
 ```
-
-For the detailed migration phases and checklists see the modularization section in `TODO.md` (transitioning to a dedicated README subsection once phases progress).
-
-### Plaintext / Unicode Diagrams (Quick Reference)
-
-Module Dependency Matrix (rows depend on columns = X):
-
-```
-								core  persist  ingest  ai  congress  ollama  infra  api
-core-domain       -      -       -     -     -         -      -     -
-persistence-jpa   X      -       -     -     -         -      -     -
-ingestion         X      -       -     -     -         -      (cfg)  -
-ai-analysis       X      -       -     -     -         -      (cfg)  -
-ext-congress      X      -       -     -     -         -      (cfg)  -
-ext-ollama        X      -       -     -     -         -      (cfg)  -
-common-infra      -      -       -     -     -         -      -     -
-api-rest          X      X       X     X     X         X      X     -
-```
-
-Legend: `(cfg)` = consumes configuration beans only; `X` = compile-time dependency; `-` = no dependency.
-
-Phase Timeline (✓ = completed, □ = pending; initial state):
-```
-Phase 0: Ports & Baseline   □
-Phase 1: core-domain        □
-Phase 2: persistence-jpa    □
-Phase 3: Adapters split     □
-Phase 4: Ingestion module   □
-Phase 5: AI module          □
-Phase 6: api-rest isolate   □
-Phase 7: common-infra       □
-Phase 8: Testing alignment  □
-Phase 9: Harden boundaries  □
-Phase10: Cleanup/docs       □
-```
-
-High-Level Data Flow (plaintext):
-```
-Congress.gov -> Congress Adapter -> Ingestion -> Domain Models -> Persistence (Postgres)
-																								|                 ↑
-																								|                 |
-																				 AI Analysis <- AI Adapter (Ollama)
-																								|
-																								v
-																					 API (REST) -> Frontend (React)
-```
-
-Ingestion Sequence (compact):
-```
-Scheduler
-	| trigger
-	v
-Ingestion Service --fetch bills--> Congress Adapter --HTTP--> Congress.gov
-	|<--list summaries--|
-	| loop
-	|--fetch detail--> Congress Adapter
-	|<--detail?-------|
-	| build domain object
-	|--save--> Persistence (JPA/DB)
-	v
-Report stats
-```
-
-Caching & Retry Placement:
-```
-External Calls: Congress Adapter, Ollama Adapter
-Mechanisms: @Cacheable + Retry(backoff≥2s, jitter) configured in common-infra
-Cache Store: Redis (string keys: service-method_param1_...)
-```
-
-Frontend Feature Composition:
-```
-App Providers
-	├─ QueryClient
-	├─ Router
-	└─ Theme (future)
-			|
-			├─ Pages
-			|    ├─ DocumentsPage
-			|    |    └─ DocumentFeedWidget -> (features/documents components + queries)
-			|    └─ DocumentDetailPage -> (details + analysis panel)
-			└─ Other Future Pages
-```
-
-### Box-Drawing Diagrams (Detailed Views)
-
-Layered Backend Architecture:
-```
-┌─────────────────────────────────────────────────────────┐
-│                      api-rest (HTTP)                   │  ← Controllers / DTO mappers / Error envelopes
-├─────────────────────────────────────────────────────────┤
-│        ingestion            │         ai-analysis       │  ← Application services (use ports)
-├─────────────────────────────┴───────────────────────────┤
-│                   core-domain (pure)                    │  ← Domain models, value objects, events, invariants
-├─────────────────────────────────────────────────────────┤
-│                    persistence-jpa (JPA)                │  ← Repositories, entities, mappers
-├─────────────────────────────────────────────────────────┤
-│ external-congress-adapter │ external-ollama-adapter    │  ← Adapters implement ports (HTTP / AI)
-├─────────────────────────────────────────────────────────┤
-│                    common-infra (config)                │  ← Caching, retry, metrics, security
-└─────────────────────────────────────────────────────────┘
-```
-
-HTTP Request Lifecycle (example: GET /api/documents/{id}):
-```
-Client → Controller → Application Service (ingestion/ai if needed) → Domain Service → Repository Port → JPA Repo → DB
-		  ↓                          ↑
-		Mapper ← Domain Model ← Mapper
-```
-
-AI Analysis Pipeline:
-```
-┌────────────┐   ┌────────────────┐   ┌──────────────────┐   ┌───────────────┐   ┌────────────────┐
-│ Ingestion  │→→│ New Document    │→→│ ai-analysis Svc   │→→│ AiModelPort    │→→│ Ollama Adapter  │
-└────────────┘   └────────────────┘   └──────────────────┘   └──────┬────────┘   └──────┬─────────┘
-											   │                    │
-									 Prompt build / params             HTTP POST
-											   │                    │
-									     ┌────────▼────────┐           │
-									     │   Model Output  │◀──────────┘
-									     └────────┬────────┘
-											  Persist (Repository Port) → DB
-```
-
-Frontend Composition Overview:
-```
-┌───────────────┐    ┌────────────────┐    ┌────────────────┐
-│ app/providers │→→ │   pages/*       │→→ │ widgets/*       │
-└──────┬────────┘    └──────┬─────────┘    └──────┬─────────┘
-	 │                     │                     │
-	 │               ┌─────▼─────┐         ┌─────▼─────┐
-	 │               │ features/ │         │ shared/ui │
-	 │               └─────┬─────┘         └─────┬─────┘
-	 │                     │                     │
-	 │             ┌───────▼────────┐      ┌─────▼──────┐
-	 │             │ entities/*     │      │ shared/api │
-	 │             └────────────────┘      └────────────┘
-```
-
-Build & CI Flow (simplified future state):
-```
-┌──────────┐  lint/detekt  ┌──────────────┐  unit tests  ┌────────────────┐  integration  ┌─────────────┐  package  ┌────────────┐
-│ Checkout │─────────────▶│ Validate Job │────────────▶│  Unit / Port   │──────────────▶│ Integration │──────────▶│  API Image │
-└──────────┘               └──────────────┘             └────────────────┘               └─────────────┘          └────────────┘
-																	│ publish
-																	▼
-															     Registry / Deploy
-```
-
-Organization Analogy (roles mapping example):
-```
-				┌───────────┐
-				│   API     │ (public interface / controllers)
-				└─────┬─────┘
-					│
-		  ┌───────────────┴───────────────┐
-		  │                               │
-	  ┌─────┴─────┐                   ┌─────┴─────┐
-	  │ Ingestion  │                   │  AI Svc   │
-	  └─────┬─────┘                   └─────┬─────┘
-		  │                               │
-	┌───────┴───────┐               ┌───────┴───────┐
-	│ Domain Logic  │               │   Ports       │
-┌─────┴─────┐   ┌─────┴─────┐         └───────────────┘
-│Persistence│   │ Adapters  │ (Congress/Ollama)
-└───────────┘   └───────────┘
-```
-
-
-
-Repository layout (top-level):
-
-- `backend/` — Kotlin/Spring code, Gradle build
-- `frontend/` — React + TypeScript app (Create React App / Vite-style layout)
-- `docker-compose.yml` — compose setup for backend, frontend (or built assets) and supporting services
 
 ## Prerequisites
 
-- Docker & Docker Compose (recommended for first-run)
-- Java 17+ (if running backend locally)
-- Node.js 18+ and npm/yarn (if running frontend locally)
-- (Optional) Access to AI model/service provider (API key or local LLM)
+- Docker 24.0+ and Docker Compose 2.0+
+- Git
 
-## Quick start (Docker Compose)
+*For local development: Java 21+, Node.js 18+*
 
-From the project root run:
+## Quick Start
+
+### 1. Clone and Start
 
 ```bash
-docker-compose up -d
+git clone https://github.com/your-username/LegisTrack.git
+cd LegisTrack
+
+# Start all services
+docker compose up -d
 ```
 
-This brings up the backend and frontend (and any configured services). Allow a few moments for services to initialize. Check logs with `docker-compose logs -f`.
+### 2. Access Services
 
-Default ports (verify in your local config):
-- Backend API: http://localhost:8080
-- Frontend (dev): http://localhost:3000 or static assets served by Nginx if using the production build
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Frontend** | http://localhost | React UI |
+| **Backend API** | http://localhost:8080 | REST API |
+| **Ollama** | http://localhost:11434 | AI inference |
 
-## Run locally (development)
+### 3. Setup AI Models (Optional)
 
-Backend (Kotlin/Spring):
+```bash
+# Pull AI model for analysis features
+docker exec legistrack-ollama ollama pull gpt-oss:20b
+```
+
+### 4. Verify Installation
+
+```bash
+# Check backend health
+curl http://localhost:8080/actuator/health
+
+# Test API
+curl http://localhost:8080/api/documents?page=0&size=5
+```
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `jdbc:postgresql://postgres:5432/legistrack` | PostgreSQL connection |
+| `DATABASE_USERNAME` | `legistrack` | Database username |
+| `DATABASE_PASSWORD` | `legistrack_password` | Database password |
+| `OLLAMA_BASE_URL` | `http://ollama:11434` | Ollama API endpoint |
+| `CONGRESS_API_KEY` | *(optional)* | Congress.gov API key |
+| `GOVINFO_API_KEY` | *(optional)* | GovInfo API key |
+
+Config property: `app.congress.api.retry-attempts` (default 3). Set to 0 to disable retries (useful in tests or local deterministic debugging).
+
+Additional adaptive suppression tuning property:
+
+Config property: `app.congress.api.retry-adaptive-threshold-percent` (default 10). When both rate limit headers (`x-ratelimit-limit` and `x-ratelimit-remaining`) are present and the remaining percentage falls **below** this threshold, any further retry attempts for that call are suppressed (behaves as if configured attempts were 0). Each suppression increments the metric `congress.api.retries.adaptive.suppressed`. Lower this value to allow more aggressive retrying under tight quotas; raise it if you prefer to conserve quota earlier. ([PERF] vs [DATA] trade‑off guidance: prioritize quota preservation when upstream limits are scarce.)
+
+#### Ollama AI Metrics (prefix `ollama.api`)
+- `ollama.api.requests` Counter of generate requests attempted
+- `ollama.api.errors` Counter of failed generate requests
+- `ollama.api.latency` Timer recording end-to-end generation latency (per attempt, includes retries)
+
+#### Cache Metrics (prefix `cache`)
+Lightweight counters emitted for every cache (Redis + local) via an instrumented `CacheManager`:
+- `cache.requests` Total get invocations (all variants)
+- `cache.hits` Successful lookups returning a non-null value
+- `cache.misses` Lookups that returned null
+Tag: `name=<cacheName>` allowing per-cache dashboards and hit ratio calculation `(hits / requests)`.
+
+Derived ratio gauges:
+- `cache.hit.ratio` Gauge of `hits / requests` per cache (tag `name=<cacheName>`). Value is -1 until at least one request (sentinel for uninitialized to avoid divide-by-zero / NaN).
+- `cache.miss.ratio` Gauge of `misses / requests` per cache (tag `name=<cacheName>`). Also -1 until at least one request. Together ratios sum to 1 once initialized.
+
+Load latency timer:
+- `cache.load.latency` Timer capturing the execution duration of value loader functions (`get(key, valueLoader)`) for caches (tag `name=<cacheName>`). Use histogram/percentiles to identify slow cache population operations distinct from downstream request latency.
+
+Eviction & size metrics:
+- `cache.evictions` Counter incremented on explicit evict(key) calls (tag `name=<cacheName>`)
+- `cache.clears` Counter incremented when an entire cache is cleared (tag `name=<cacheName>`)
+- `cache.size` Gauge estimating current entry count for map-backed caches; -1 when size cannot be determined (e.g., remote Redis abstraction without local size visibility)
+
+#### Congress API Metrics (prefix `congress.api`)
+Previously added request/error/throttle counters and rate limit gauges (documented here for central reference):
+- `congress.api.requests` Outbound calls attempted
+- `congress.api.errors` Calls ending in server error (>=500) or decoding failure
+- `congress.api.throttled` HTTP 429 responses (legacy name kept for dashboards)
+- `congress.api.status.429` HTTP 429 responses (new standardized naming)
+- `congress.api.rateLimit.remaining` Gauge of latest X-RateLimit-Remaining header
+- `congress.api.rateLimit.resetSeconds` Gauge of latest X-RateLimit-Reset header (seconds)
+ - `congress.api.rateLimit.limit` Gauge of latest X-RateLimit-Limit header
+ - `congress.api.rateLimit.remainingPct` Derived percentage (remaining/limit * 100) or -1 if unknown
+ - `congress.api.rateLimit.last429Epoch` Epoch seconds of most recent 429
+ - `congress.api.latency` Timer with tags `operation` (recentBills|billDetails|ping) and `outcome` (success|error) – histogram + p95/p99 percentiles enabled
+ - `congress.api.cache.miss` Counter of method body executions (simple cache miss approximation)
+ - Circuit breaker metrics:
+     - `congress.api.circuit.state` Gauge (0 closed / 1 open)
+     - `congress.api.circuit.consecutiveFailures` Gauge tracking rolling failure streak
+     - `congress.api.circuit.opened` Counter increments each transition to OPEN
+     - `congress.api.circuit.shortcircuits` Counter of calls skipped due to OPEN state
+     - `congress.api.circuit.openDurationSeconds` Gauge reporting seconds since breaker opened (0 when closed)
+ - Retry metrics:
+     - `congress.api.retries` Counter tagged by `errorType` and `attempt` (0..n-1) incremented before each retry attempt
+     - `congress.api.retries.adaptive.suppressed` Counter increments when configured retries are suppressed because remaining rate limit <10%
+ - Documents controller metric:
+     - `congress.api.documents.sort.rejected` Counter tagged with `requested=<field>` when invalid sort field is rejected
+
+#### Ollama API Metrics (prefix `ollama.api`)
+- `ollama.api.requests` Generate attempts
+- `ollama.api.errors` Failed generate attempts
+- `ollama.api.latency` Timer for end-to-end generate duration
+- `ollama.api.status.429` HTTP 429 responses encountered
+
+#### AI Analysis Orchestration Metrics (prefix `ai.analysis`)
+Emitted by internal orchestration service when generating and persisting analysis:
+- `ai.analysis.requests` Successful orchestration cycles attempted (including those with partial content)
+- `ai.analysis.failures` Failures across generation or persistence steps
+- `ai.analysis.prompt.chars` Total prompt characters submitted (counter)
+- `ai.analysis.response.chars` Total response characters received (counter, includes tags aggregate length)
+- `ai.analysis.latency` Timer capturing end-to-end multi‑prompt generation + persistence duration
+ - `ai.analysis.success.rate` Gauge of (successful persisted analyses / (success + failures)) since process start
+ - `ai.analysis.last.response.chars` Gauge of character count of the last successful persisted analysis (aggregated general+economic+tags characters)
+
+#### Health Metrics (prefix `health`)
+- `health.component.status` Gauge (value: 1.0 UP / 0.5 DEGRADED / 0.0 DOWN / -1 UNKNOWN) tagged by `name`
+- `health.component.latency` Timer per component
+- `health.component.down.count` Counter incremented on DOWN occurrences per component
+- `health.aggregate.status` Gauge representing overall status
+- `health.aggregate.invocations` Counter of aggregate health calls
+- `health.critical.down.count` Gauge of number of critical components currently DOWN
+Component JSON now includes `lastSuccessEpochMs` (ms since epoch) when component status is not DOWN.
+
+#### Ingestion Run Metrics (prefix `ingestion.run`)
+Idempotent ingestion ledger ensures only one SUCCESS run per `fromDate` (7-day window by scheduler default).
+
+- `ingestion.run.success` Counter of successful ingestion runs
+- `ingestion.run.failure` Counter of failed runs (exception paths)
+- `ingestion.run.skipped.idempotent` Counter of skipped runs because a SUCCESS already exists for the `fromDate`
+- `ingestion.run.duration` Timer capturing wall-clock duration of ingestion loop (pages fetch + persistence)
+- `ingestion.run.lastDocumentCount` Gauge holding document count from most recent successful run
+- `ingestion.run.successRate` Gauge (successes / (successes + failures)) since process start
+
+Schema (Flyway V3) introduces `ingestion_runs` table with partial unique index enforcing single SUCCESS per `from_date`.
+
+Ingestion status endpoint: `GET /api/ingestion/status` returns JSON with latest run, latest success, latest failure, and derived successRate.
+
+#### Input Validation (Documents API)
+The documents listing and search endpoints now enforce explicit bounds (rather than silently coercing):
+| Parameter | Rule | Error Response |
+|-----------|------|----------------|
+| `page` | must be >= 0 | `400 {"success": false, "message": "Page index must be >= 0"}` |
+| `size` | 1..100 inclusive | `400 {"success": false, "message": "Size must be between 1 and 100"}` |
+
+All error responses now use a standardized envelope `ErrorResponse`:
+```json
+{ "success": false, "message": "Human readable description" }
+```
+Additional contextual fields may be added under a future `details` map without breaking the contract.
+
+#### Component Health Detail Endpoints
+In addition to aggregate `/api/health` and `/api/health/components`, explicit shortcut endpoints are provided:
+| Endpoint | Component Key | Description |
+|----------|---------------|-------------|
+| `/api/health/congress` | `congressApi` | Congress API health snapshot |
+| `/api/health/ollama` | `ollama` | Ollama (AI model) health snapshot |
+
+Each returns a `ComponentHealth` JSON structure identical to entries in the aggregate response (fields: `status`, `latencyMs`, `message`, `lastSuccessEpochMs`).
+
+#### Congress API Retry Strategy
+Outbound Congress API calls use exponential backoff with jitter (base 2s, configured attempts via `app.congress.api.retry-attempts`). Full jitter (0–delay window) reduces coordinated retries. A 429 (rate limit) or >=500 response will be retried up to the configured attempts.
+
+Adaptive suppression: When both `x-ratelimit-limit` and `x-ratelimit-remaining` headers are known and remaining percentage drops below 10%, additional retries are suppressed (attempts forced to 0) to preserve limited quota. Each suppression increments `congress.api.retries.adaptive.suppressed`.
+
+Set attempts to 0 to disable retries entirely. Rate limit headers continue populating gauges irrespective of retry behavior.
+
+#### Congress API Circuit Breaker
+The adapter maintains a simple in-memory circuit breaker:
+* Opens after N consecutive failures (config: `app.congress.api.cb.threshold`, default 5)
+* While OPEN, calls are short-circuited until cooldown elapses (config: `app.congress.api.cb.cooldown-seconds`, default 30s)
+* After cooldown, a single trial call is allowed (half-open semantics). A success closes the breaker and resets counters.
+
+Metrics (see list above) provide observability into breaker behavior, including open duration and number of short-circuits.
+
+Health snapshot enrichment: The adapter health JSON now includes `circuitOpenDurationSeconds` (seconds since the breaker transitioned OPEN, or 0 when CLOSED) enabling dashboards to show how long the breaker has remained open without scraping gauge timeseries.
+
+Configuration properties:
+| Property | Default | Description |
+|----------|---------|-------------|
+| `app.congress.api.cb.threshold` | 5 | Consecutive failure count that opens breaker |
+| `app.congress.api.cb.cooldown-seconds` | 30 | Minimum seconds breaker remains OPEN before permitting a trial call |
+
+Tuning guidance: Lower the threshold if upstream instability needs quicker isolation; increase cooldown for slower upstream recovery scenarios.
+
+#### Correlation Propagation
+Inbound requests establish/accept `X-Correlation-Id` which is now automatically propagated to outbound `WebClient` calls (added filter). This enables end-to-end tracing across adapters (Congress, Ollama) when aggregated in log/trace systems.
+
+### Custom Configuration
+
+Create a `.env` file for local overrides:
+
+```bash
+CONGRESS_API_KEY=your_api_key_here
+GOVINFO_API_KEY=your_api_key_here
+```
+
+## API Documentation
+
+### Key Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/documents` | List documents with pagination |
+| `GET` | `/api/documents/{id}` | Get document details |
+| `GET` | `/api/documents/search?q={query}` | Search documents |
+| `POST` | `/api/documents/{id}/analyze` | Generate AI analysis |
+| `GET` | `/api/analytics/summary` | Get platform analytics |
+| `POST` | `/api/documents/ingest` | Trigger manual ingestion |
+
+### Example Usage
+
+```bash
+# Get recent documents
+curl "http://localhost:8080/api/documents?page=0&size=10"
+
+# Search documents
+curl "http://localhost:8080/api/documents/search?q=climate"
+
+# Get analytics
+curl "http://localhost:8080/api/analytics/summary"
+```
+
+## Development
+
+### Backend Development
 
 ```bash
 cd backend
-./gradlew bootRun
-```
 
-Look for Spring Boot startup logs and an HTTP listening port (commonly 8080). Configurations are under `backend/src/main/resources` (profiles and `application-*.properties` or `.yml`).
+# Build and run
+./gradlew clean build
+./gradlew bootRun --args='--spring.profiles.active=dev'
 
-Frontend (React/TypeScript):
-
-```bash
-cd frontend
-npm install
-npm run start
-```
-
-The frontend will open a hot-reloading development server (commonly http://localhost:3000) and point API requests to the configured backend URL.
-
-## Configuration & AI provider
-
-The project is designed to keep AI provider selection configurable via environment variables and backend config files. Typical knobs include:
-
-- MODEL_PROVIDER (e.g., OpenAI, local LLM)
-- API keys or credentials (set as env vars or docker secrets)
-- EMBEDDING_DIM, VECTOR_STORE settings (if using local vector DB)
-
-Check `backend/src/main/resources` and `docker-compose.yml` for exact variable names used in this repository.
-
-## Testing
-
-- Backend: run Gradle tests
-
-```bash
-cd backend
+# Run tests
 ./gradlew test
 ```
 
-- Frontend: run unit tests
+**Prerequisites**: Java 21+, PostgreSQL and Redis
+
+### Frontend Development
 
 ```bash
 cd frontend
+
+# Install and run
+npm ci
+npm start
+
+# Run tests
 npm test
 ```
 
+**Prerequisites**: Node.js 18+, backend running on port 8080
+
+### Database Setup
+
+```bash
+# Start only databases
+docker compose up -d postgres redis
+```
+
+## Deployment
+
+### Production Deployment
+
+```bash
+# Build and deploy
+docker compose build
+docker compose up -d
+
+# Scale services (if needed)
+docker compose up -d --scale backend=3
+```
+
+### Production Considerations
+
+- Use managed PostgreSQL and Redis services
+- Set environment variables via secret management
+- Enable HTTPS and configure CORS for your domain
+- Monitor health endpoints: `/actuator/health`, `/actuator/metrics`
+
+
+
 ## Contributing
 
-Contributions are welcome. A few guidelines:
+1. Fork the repository and create a feature branch
+2. Make your changes following coding standards
+3. Ensure all tests pass (`./gradlew test`)
+4. Submit a pull request with clear description
 
-- Open an issue to discuss major changes or new AI integrations (models/providers)
-- Keep AI model keys and secrets out of source control; use env vars or secrets management
-- Write tests for new features (backend unit tests, frontend component tests)
-- Document new configuration options and update this README when behavior changes
+### Guidelines
 
-## Security and privacy
+- Follow Kotlin and TypeScript coding conventions
+- Maintain test coverage >80% for new features
+- Respect hexagonal architecture boundaries
+- Keep PRs focused on single features/fixes
 
-The platform may process sensitive legislative or personal data depending on ingestion sources. Follow these precautions:
+## Troubleshooting
 
-- Secure API keys and model credentials
-- Configure data retention and deletion policies in the backend
-- Audit which external AI services data is sent to and consider on-prem or private models when privacy-sensitive
+### Common Issues
 
-## Roadmap & ideas
+- **Backend won't start**: Check logs with `docker compose logs backend`
+- **AI analysis fails**: Ensure Ollama is running and model is pulled
+- **CORS errors**: Configure `ALLOWED_ORIGINS` environment variable
+- **Database connection**: Verify PostgreSQL is healthy
 
-- Plug-and-play AI backends (OpenAI, Anthropic, local LLMs)
-- Vector DB integration (e.g., Milvus, Pinecone, Weaviate) for scale and fast semantic retrieval
-- Interactive Q&A over legislative corpora with conversational memory
-- Document lineage tracking, cross-references and impact analysis
+### Debugging
 
-## Where to look in the code
+```bash
+# Check service status
+docker compose ps
 
-- Backend source: `backend/src/main/kotlin` and resources in `backend/src/main/resources`
-- Frontend source: `frontend/src` (components, hooks, services)
-- Docker compose orchestration: `docker-compose.yml`
+# View logs
+docker compose logs -f backend
 
-## License & contact
-
-Specify your project's license here (e.g., MIT) and provide contact or maintainer information.
+# Test health
+curl http://localhost:8080/actuator/health
+```
 
 ## License
 
-This project is licensed under the MIT License — see the `LICENSE` file in the project root for details.
+MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Authorship
+## Acknowledgments
 
-This project and the initial codebase and documentation were generated with the assistance of an AI coding assistant. The AI authored the initial project scaffold and README content on 2025-08-15. Human review and verification are recommended for production use — check configuration, secrets, and licenses before deploying.
+- Spring Boot and Kotlin communities
+- Ollama project for local LLM infrastructure
+- Congress.gov and GovInfo for public APIs
+- React and TypeScript ecosystems
 
+## Error Handling & Correlation
+
+Standard error envelope (all failures):
+
+```
+{"success": false, "message": "User-friendly message", "correlationId": "<uuid>", "details": { ... optional ... }}
+```
+
+Enhancements:
+- Global `@RestControllerAdvice` injects `correlationId` (from `X-Correlation-Id` header or generated) in every error.
+- Exception metrics: `api.exceptions.total` and `api.exceptions.byType{type=<Category>}`.
+- 404 resources raise `NotFoundException` mapped to HTTP 404 with consistent body.
+- Congress adapter retry attempts tracked via `congress.api.retries{errorType=<ExceptionSimpleName>}`.
+
+Correlation IDs propagate to outbound WebClient calls for trace continuity. Always include the `X-Correlation-Id` header in client requests when chaining across services.
