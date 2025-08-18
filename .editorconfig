@@ -1,5 +1,13 @@
 root = true
 
+################################################################################
+# LegisTrack unified EditorConfig
+# Conventions:
+#  - Tabs for indentation at top-level (keeps diffs small) except where tools expect spaces
+#  - 2-space visual width for most source languages (Kotlin code style off by ktlint overrides)
+#  - Kotlin specific override: 4 space visual (import ordering & line-length relaxed by ktlint rules list)
+################################################################################
+
 [*]
 indent_style = tab
 end_of_line = lf
@@ -7,6 +15,19 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 
-[*.{kt,kts,java,md,yml,yaml,ts,tsx,js,jsx,json}]
+# General source (space sized 2 but represented via tab stops in IDEs)
+[*.{java,md,yml,yaml,ts,tsx,js,jsx,json}]
 indent_size = 2
 max_line_length = 100
+
+# Kotlin (align with existing ktlint expectations)
+[*.{kt,kts}]
+indent_style = tab
+indent_size = 4
+max_line_length = 120
+# Disable some ktlint rules project-wide (tooling reads this key if integrated)
+ktlint_disabled_rules = import-ordering,no-consecutive-comments,max-line-length
+
+# Markdown specifics
+[*.md]
+trim_trailing_whitespace = false

@@ -1,97 +1,80 @@
-# Backend
-backend/build/
-backend/bin/
-backend/.gradle/
-backend/out/
+################################################################################
+# LegisTrack .gitignore (deduplicated)
+# Priority Ladder: SEC > DATA > CORR > REL > PERF > MAIN > VELO > STYLE
+################################################################################
 
-# Frontend
-frontend/node_modules/
-frontend/build/
-
-# IDE
-.idea/
-.vscode/
-
-# Logs
-**/*.log
-
-# Dependencies
-node_modules/
-*/node_modules/
-
-# Build outputs
+########## Build / Output ##########
 build/
 dist/
-target/
 out/
+target/
 */build/
 */dist/
-*/target/
 */out/
-backend/build/
+*/target/
+backend/bin/
 backend/.gradle/
 backend/.kotlin/
 frontend/build/
 frontend/dist/
+
+########## Dependencies ##########
+node_modules/
+*/node_modules/
 frontend/node_modules/
 
-# Environment files
+########## Environment (SEC) ##########
 .env
+.env.*.local
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
-# IDE files
-.vscode/
+########## IDE / Editor ##########
 .idea/
-*.swp
-*.swo
-*~
+.vscode/
 *.iml
 *.ipr
 *.iws
+*.swp
+*.swo
+*~
 
-# OS files
+########## OS Files ##########
 .DS_Store
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 
-# Logs
+########## Logs / Diagnostics ##########
 *.log
+**/*.log
 logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+hs_err_pid*
+replay_pid*
 
-# Docker
-docker-compose.override.yml
-
-# Database
+########## Databases ##########
 *.db
 *.sqlite
 *.sqlite3
 
-# Gradle
+########## Gradle / Kotlin ##########
 .gradle/
 gradle-app.setting
-!gradle-wrapper.jar
 gradle-wrapper.properties.backup
-backend/.gradle/
-backend/build/
-backend/gradle-app.setting
-
-# Kotlin
 .kotlin/
 *.kt.class
 *.kotlin_module
-backend/.kotlin/
 backend/**/*.kt.class
 backend/**/*.kotlin_module
 
-# Spring Boot
+# Keep Gradle wrapper (re-include)
+!gradle-wrapper.jar
+!backend/gradle/wrapper/gradle-wrapper.jar
+
+########## Spring Boot Props ##########
 application-local.properties
 application-*.properties
 !application.properties
@@ -101,63 +84,36 @@ backend/src/main/resources/application-*.properties
 !backend/src/main/resources/application.properties
 !backend/src/main/resources/application-docker.properties
 
-# Frontend specific
+########## Frontend Tooling ##########
 .eslintcache
-/coverage
-.nyc_output
-.next/
-.nuxt/
-.cache/
-.parcel-cache/
 frontend/.eslintcache
-frontend/coverage/
+.nyc_output
 frontend/.nyc_output
-frontend/.next/
-frontend/.cache/
+.parcel-cache/
 frontend/.parcel-cache/
-frontend/node_modules/
-
-# React/TypeScript
+.cache/
+frontend/.cache/
+.next/
+frontend/.next/
+.nuxt/
+coverage/
+frontend/coverage/
 *.tsbuildinfo
-.npm
-.yarn-integrity
 frontend/*.tsbuildinfo
+.npm
 frontend/.npm
+.yarn-integrity
 frontend/.yarn-integrity
 
-# Testing
+########## Test Artifacts ##########
 junit.xml
-coverage/
+frontend/junit.xml
 *.lcov
-.nyc_output/
+frontend/*.lcov
 backend/build/reports/
 backend/build/test-results/
-frontend/coverage/
-frontend/junit.xml
-frontend/*.lcov
 
-# Backup files
-*.bak
-*.backup
-*.orig
-*.rej
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-*.temp
-
-# Native binaries
-*.so
-*.dylib
-*.dll
-
-# JVM crash logs
-hs_err_pid*
-replay_pid*
-
-# Package files
+########## Archives / Packages ##########
 *.jar
 *.war
 *.nar
@@ -169,14 +125,36 @@ backend/build/libs/
 backend/**/*.war
 backend/**/*.jar
 
-# Allow committed Gradle wrapper JAR (required for reproducible builds) - placed after broad ignores to re-include
-!gradle-wrapper.jar
-!backend/gradle/wrapper/gradle-wrapper.jar
+########## Temp / Backup ##########
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.rej
 
-# Maven (if used)
+########## Native ##########
+*.so
+*.dylib
+*.dll
+
+########## Maven (future) ##########
 .mvn/
 mvnw
 mvnw.cmd
 
-# TestContainers
+########## TestContainers ##########
 .testcontainers/
+
+########## Docker Override ##########
+docker-compose.override.yml
+
+########## Obsidian (volatile) ##########
+obsidian/LegisTrack/.obsidian/workspace.json
+obsidian/LegisTrack/.obsidian/graph.json
+obsidian/LegisTrack/.obsidian/appearance.json
+obsidian/LegisTrack/.obsidian/undo-history/**
+
+########## End ##########
