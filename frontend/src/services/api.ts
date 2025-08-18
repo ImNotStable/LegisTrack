@@ -40,8 +40,11 @@ class ApiService {
     sortBy: string = 'introductionDate',
     sortDir: string = 'desc'
   ): Promise<Page<DocumentSummary>> {
+    // Sanitize page input to avoid NaN or negative values propagating to API
+    const safePage = Number.isFinite(page) && page >= 0 ? Math.floor(page) : 0;
+    const safeSize = Number.isFinite(size) && size > 0 ? Math.min(Math.floor(size), 100) : 20;
     return this.request<Page<DocumentSummary>>(
-      `/documents?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`
+      `/documents?page=${safePage}&size=${safeSize}&sortBy=${encodeURIComponent(sortBy)}&sortDir=${encodeURIComponent(sortDir)}`
     );
   }
 

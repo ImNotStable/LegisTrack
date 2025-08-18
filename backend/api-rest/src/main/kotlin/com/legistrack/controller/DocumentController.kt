@@ -31,10 +31,12 @@ class DocumentsController(
         @RequestParam(defaultValue = "introductionDate") sortBy: String,
         @RequestParam(defaultValue = "desc") sortDir: String,
     ): ResponseEntity<Any> {
-    if (page < 0) return ResponseEntity.badRequest().body(ErrorResponse(message = "Page index must be >= 0"))
-    if (size !in 1..100) return ResponseEntity.badRequest().body(ErrorResponse(message = "Size must be between 1 and 100"))
-        val safePage = page
-        val safeSize = size
+        val safePage = if (page < 0) 0 else page
+        val safeSize = when {
+            size < 1 -> 20
+            size > 100 -> 100
+            else -> size
+        }
         val normalized = normalizeSort(sortBy).also {
             if (!allowedSortFields.contains(sortBy)) {
                 meterRegistry?.counter("congress.api.documents.sort.rejected", "requested", sortBy)?.increment()
@@ -56,10 +58,12 @@ class DocumentsController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
     ): ResponseEntity<Any> {
-    if (page < 0) return ResponseEntity.badRequest().body(ErrorResponse(message = "Page index must be >= 0"))
-    if (size !in 1..100) return ResponseEntity.badRequest().body(ErrorResponse(message = "Size must be between 1 and 100"))
-    val safePage = page
-    val safeSize = size
+        val safePage = if (page < 0) 0 else page
+        val safeSize = when {
+            size < 1 -> 20
+            size > 100 -> 100
+            else -> size
+        }
         val pageable = PageRequest.of(safePage, safeSize, Sort.by("introductionDate").descending())
     return ResponseEntity.ok().body(documentService.searchDocuments(query, pageable) as Any)
     }
@@ -70,10 +74,12 @@ class DocumentsController(
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "20") size: Int,
     ): ResponseEntity<Any> {
-    if (page < 0) return ResponseEntity.badRequest().body(ErrorResponse(message = "Page index must be >= 0"))
-    if (size !in 1..100) return ResponseEntity.badRequest().body(ErrorResponse(message = "Size must be between 1 and 100"))
-    val safePage = page
-    val safeSize = size
+        val safePage = if (page < 0) 0 else page
+        val safeSize = when {
+            size < 1 -> 20
+            size > 100 -> 100
+            else -> size
+        }
         val pageable = PageRequest.of(safePage, safeSize, Sort.by("introductionDate").descending())
     return ResponseEntity.ok().body(documentService.findByIndustryTag(tag, pageable) as Any)
     }

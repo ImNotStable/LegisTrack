@@ -38,7 +38,11 @@ export const useInfiniteDocuments = (
   return useInfiniteQuery<Page<DocumentSummary>, Error>({
     queryKey: ['documents-infinite', size, sortBy, sortDir],
     initialPageParam: 0,
-    queryFn: ({ pageParam }) => apiService.getDocuments(pageParam as number, size, sortBy, sortDir),
+    queryFn: ({ pageParam }) => {
+      const raw = pageParam as number;
+      const safe = Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : 0;
+      return apiService.getDocuments(safe, size, sortBy, sortDir);
+    },
     getNextPageParam: (lastPage) => (lastPage.last ? undefined : lastPage.number + 1),
     staleTime: 5 * 60 * 1000,
     retry: process.env.NODE_ENV === 'test' ? 0 : 2,
