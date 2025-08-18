@@ -64,6 +64,7 @@ Cache keys include every input parameter (pattern: `method_param1_param2_...`). 
 * CI workflow runs: build, ktlint, spotless, tests, and dependency update reports on PRs.
 * Dependency update visibility: Gradle Versions Plugin (`dependencyUpdatesFiltered`) + `npm run dep:outdated`.
 * License: MIT; header template applied automatically to new Kotlin / Gradle files.
+* Automated dependency maintenance via Renovate (`.github/renovate.json5`): grouped PRs (kotlin-stack, spring-platform), weekly schedule (before 7am Monday UTC), automerge safe npm patch/minor & GitHub Action updates. `[REL][VELO]`
 
 ## Frontend Data Access
 React Query hooks with stable keys, 5m stale time. Mutations invalidate list & infinite variants. No direct fetch in components. See [[Glossary]] for term definitions like "Document".
