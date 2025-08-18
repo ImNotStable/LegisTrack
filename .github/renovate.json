@@ -43,7 +43,7 @@
   },
   "dockerfile": {
     "enabled": true,
-    "fileMatch": ["Dockerfile", "**/Dockerfile"],
+  "fileMatch": ["(^|/)Dockerfile$"] ,
     "semanticCommitType": "chore"
   },
   "packageRules": [
