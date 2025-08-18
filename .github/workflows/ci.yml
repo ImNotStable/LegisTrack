@@ -1,10 +1,11 @@
 name: CI
 
+# Restricted triggers: only run on main branch pushes and PRs targeting main.
 on:
   push:
-    branches: [ main, develop, feature/** ]
+    branches: [ main ]
   pull_request:
-    branches: [ "**" ]
+    branches: [ main ]
 
 concurrency:
   group: ci-${{ github.ref }}
