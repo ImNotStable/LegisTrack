@@ -1,10 +1,11 @@
 name: CI
 
+# Triggers restricted to master branch only (default branch)
 on:
   push:
-    branches: [ master, develop, feature/** ]
+    branches: [ master ]
   pull_request:
-    branches: [ "**" ]
+    branches: [ master ]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -69,11 +70,11 @@ jobs:
 
       - name: Type Check
         working-directory: frontend
-  run: npm run typecheck
+        run: npx tsc --noEmit
 
-      - name: Run Tests
+      - name: Run Tests + Coverage
         working-directory: frontend
-  run: npm run test:coverage
+        run: npm run test:ci -- --coverage
 
       - name: Build (ensure prod build passes)
         working-directory: frontend
