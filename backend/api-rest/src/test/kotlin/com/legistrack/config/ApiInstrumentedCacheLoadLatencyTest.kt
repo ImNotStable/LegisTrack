@@ -1,24 +1,17 @@
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.legistrack.config
 
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
-import org.springframework.cache.concurrent.ConcurrentMapCache
-import java.util.concurrent.Callable
-
-class ApiInstrumentedCacheLoadLatencyTest {
-    @Test
-    fun `should record valueLoader latency`() {
-        val registry = SimpleMeterRegistry()
-        val underlying = ConcurrentMapCache("demo2")
-        val cache = ApiInstrumentedCache(underlying, registry)
-
-        val value = cache.get("lazy", Callable { Thread.sleep(5); "computed" })
-        assertThat(value).isEqualTo("computed")
-
-        val timer = registry.find("cache.load.latency").tag("name", "demo2").timer()
-        assertThat(timer).isNotNull
-        assertThat(timer!!.count()).isEqualTo(1)
-        assertThat(timer.totalTime(java.util.concurrent.TimeUnit.MILLISECONDS)).isGreaterThanOrEqualTo(5.0)
-    }
-}
+// Legacy metrics cache latency test removed during metrics decommissioning.

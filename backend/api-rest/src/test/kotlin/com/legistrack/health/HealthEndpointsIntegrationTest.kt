@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-package com.legistrack.controller
+package com.legistrack.health
 
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -22,22 +22,41 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
 import com.legistrack.testsupport.PostgresTestContainerConfig
 
+/**
+ * Ensures consolidated and component health endpoints respond with 200 and expected JSON structure
+ * after removal of metrics instrumentation.
+ */
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     classes = [PostgresTestContainerConfig::class]
 )
 @AutoConfigureWebTestClient
 @ActiveProfiles("test")
-class ExceptionMetricsIntegrationTest {
+class HealthEndpointsIntegrationTest {
 
     @Autowired
     lateinit var webTestClient: WebTestClient
 
     @Test
-    fun should_incrementExceptionCounters_onRepeated404() {
-        repeat(2) {
-            webTestClient.get().uri("/api/documents/888888").exchange().expectStatus().isNotFound
+    fun `should_returnAggregateHealth`() {
+        webTestClient.get().uri("/api/health")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.status").exists()
+            .jsonPath("$.components").exists()
+    }
+
+    @Test
+    fun `should_returnComponentHealthSnapshots`() {
+        // Explicit shortcut endpoints (mapped to internal component keys)
+        // Some components may be DOWN in test env (e.g. external services), so only assert status presence.
+        listOf("congress", "ollama").forEach { endpoint ->
+            webTestClient.get().uri("/api/health/$endpoint")
+                .exchange()
+                .expectStatus().isOk
+                .expectBody()
+                .jsonPath("$.status").exists()
         }
-    // Metrics removed; test simply ensures 404 path functions without error
     }
 }

@@ -1,19 +1,18 @@
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.legistrack.health
 
-import io.micrometer.core.instrument.MeterRegistry
-import org.slf4j.LoggerFactory
-import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
-
-@Configuration
-class HealthMetricsConfig {
-    private val log = LoggerFactory.getLogger(javaClass)
-
-    @Bean
-    fun healthRegistryCustomizer(): MeterRegistryCustomizer<MeterRegistry> = MeterRegistryCustomizer { registry ->
-        // Common tags for all health metrics
-        registry.config().commonTags("app", "legistrack", "component", "api-rest")
-        log.debug("Applied common tags to MeterRegistry for health metrics")
-    }
-}
+// Metrics customizer removed; placeholder to avoid missing bean references if any.
+class HealthMetricsConfig

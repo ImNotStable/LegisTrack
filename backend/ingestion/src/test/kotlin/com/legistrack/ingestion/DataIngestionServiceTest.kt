@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.legistrack.ingestion
 
 import com.legistrack.domain.entity.Document
@@ -7,7 +21,6 @@ import com.legistrack.domain.port.CongressPort
 import com.legistrack.domain.port.DocumentRepositoryPort
 import com.legistrack.domain.entity.IngestionRun
 import com.legistrack.domain.port.IngestionRunRepositoryPort
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -22,8 +35,7 @@ class DataIngestionServiceTest {
     private val congressPort: CongressPort = mockk()
     private val documentRepositoryPort: DocumentRepositoryPort = mockk(relaxed = true)
     private val ingestionRunRepositoryPort: IngestionRunRepositoryPort = mockk(relaxed = true)
-    private val meterRegistry = SimpleMeterRegistry()
-    private val service = DataIngestionService(congressPort, documentRepositoryPort, ingestionRunRepositoryPort, meterRegistry)
+    private val service = DataIngestionService(congressPort, documentRepositoryPort, ingestionRunRepositoryPort)
 
     @Test
     fun should_persistNewDocuments_when_recentBillsReturned() = runTest {
@@ -74,8 +86,7 @@ class DataIngestionServiceTest {
         every { ingestionRunRepositoryPort.findSuccessful(fromDate) } returns IngestionRun(id = 10, fromDate = fromDate, status = IngestionRun.Status.SUCCESS)
         val persisted = service.ingestRecentDocuments(fromDate)
         assertEquals(0, persisted)
-        // Counter should have incremented skipped
-        val skipped = meterRegistry.get("ingestion.run.skipped.idempotent").counter().count()
-        assertTrue(skipped >= 1.0)
+    // Metrics removed; ensure skip still returns zero without error
+    assertTrue(persisted == 0)
     }
 }

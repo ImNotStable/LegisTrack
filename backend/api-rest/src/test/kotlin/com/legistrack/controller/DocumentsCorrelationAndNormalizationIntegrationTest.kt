@@ -22,22 +22,32 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.reactive.server.WebTestClient
 import com.legistrack.testsupport.PostgresTestContainerConfig
 
+/**
+ * Verifies that out-of-range paging parameters are normalized (negative page -> 0, size 0 -> 20)
+ * and that requests succeed (200) under a supplied correlation id header. Success responses do not
+ * embed correlationId (only error envelopes do); propagation is asserted via absence of failure.
+ */
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     classes = [PostgresTestContainerConfig::class]
 )
 @AutoConfigureWebTestClient
 @ActiveProfiles("test")
-class ExceptionMetricsIntegrationTest {
+class DocumentsCorrelationAndNormalizationIntegrationTest {
 
     @Autowired
     lateinit var webTestClient: WebTestClient
 
     @Test
-    fun should_incrementExceptionCounters_onRepeated404() {
-        repeat(2) {
-            webTestClient.get().uri("/api/documents/888888").exchange().expectStatus().isNotFound
-        }
-    // Metrics removed; test simply ensures 404 path functions without error
+    fun `should_normalizeParams_and_return200`() {
+        webTestClient.get()
+            .uri("/api/documents?page=-10&size=0&sort=unknownField,desc")
+            .header("X-Correlation-Id", "cid-norm-2")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.pageNumber").isEqualTo(0)
+            .jsonPath("$.pageSize").isEqualTo(20)
+            .jsonPath("$.content").exists()
     }
 }

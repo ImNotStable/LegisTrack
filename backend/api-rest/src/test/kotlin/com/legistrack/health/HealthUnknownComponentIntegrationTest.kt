@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-package com.legistrack.controller
+package com.legistrack.health
 
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -28,16 +28,20 @@ import com.legistrack.testsupport.PostgresTestContainerConfig
 )
 @AutoConfigureWebTestClient
 @ActiveProfiles("test")
-class ExceptionMetricsIntegrationTest {
+class HealthUnknownComponentIntegrationTest {
 
     @Autowired
     lateinit var webTestClient: WebTestClient
 
     @Test
-    fun should_incrementExceptionCounters_onRepeated404() {
-        repeat(2) {
-            webTestClient.get().uri("/api/documents/888888").exchange().expectStatus().isNotFound
-        }
-    // Metrics removed; test simply ensures 404 path functions without error
+    fun `should_return404Envelope_for_unknownComponent`() {
+        webTestClient.get().uri("/api/health/doesNotExist")
+            .exchange()
+            .expectStatus().isNotFound
+            .expectBody()
+            .jsonPath("$.success").isEqualTo(false)
+            .jsonPath("$.message").isEqualTo("Component 'doesNotExist' not found")
+            // Correlation id optional on this path if filter not engaged early enough
+            .consumeWith { }
     }
 }

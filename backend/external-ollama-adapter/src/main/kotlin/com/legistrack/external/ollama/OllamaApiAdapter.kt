@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.legistrack.external.ollama
 
 import com.legistrack.domain.port.AiModelPort
@@ -6,8 +20,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.reactor.awaitSingleOrNull
-import io.micrometer.core.instrument.MeterRegistry
-import io.micrometer.core.instrument.Timer
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.event.ApplicationReadyEvent
@@ -30,7 +42,7 @@ private data class OllamaPullRequest(val name: String)
 open class OllamaApiAdapter(
     private val webClient: WebClient,
     private val props: OllamaProperties,
-    private val meterRegistry: MeterRegistry? = null,
+    // Metrics removed per instrumentation removal requirement
 ) : AiModelPort {
     companion object {
         private val logger = LoggerFactory.getLogger(OllamaApiAdapter::class.java)
@@ -43,16 +55,12 @@ open class OllamaApiAdapter(
         private const val MODEL_DOWNLOAD_CHECK_INTERVAL_SECONDS = 30L
         private const val MAX_SERVICE_WAIT_MINUTES = 10L
         private const val MAX_MODEL_WAIT_MINUTES = 30L
-    private const val METRIC_PREFIX = "ollama.api"
+    // Metric prefix constant removed
     }
 
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
 
-    // Metrics (lazy to avoid registry cost when not configured)
-    private val requestsCounter by lazy { meterRegistry?.counter("$METRIC_PREFIX.requests") }
-    private val errorsCounter by lazy { meterRegistry?.counter("$METRIC_PREFIX.errors") }
-    private val latencyTimer: Timer? by lazy { meterRegistry?.timer("$METRIC_PREFIX.latency") }
-    private val throttledCounter by lazy { meterRegistry?.counter("$METRIC_PREFIX.status.429") }
+    // Metrics removed
 
     @Volatile
     private var serviceReady = false
@@ -173,25 +181,19 @@ open class OllamaApiAdapter(
         )
     val baseUrl = props.baseUrl
     logger.debug("Sending request to Ollama: model={}, prompt length={}", props.model, prompt.length)
-        requestsCounter?.increment()
-        val start = System.nanoTime()
         val result = runCatching {
             webClient.post().uri("${baseUrl}/api/generate")
                 .bodyValue(request)
                 .retrieve()
-                .onStatus({ s -> s.value() == 429 }) { response ->
-                    throttledCounter?.increment(); response.createException()
-                }
+                .onStatus({ s -> s.value() == 429 }) { response -> response.createException() }
                 .bodyToMono(OllamaGenerateResponse::class.java)
                 .timeout(Duration.ofSeconds(60))
                 .retryWhen(Retry.backoff(RETRY_ATTEMPTS, Duration.ofSeconds(RETRY_DELAY_SECONDS)).jitter(0.2))
                 .awaitSingleOrNull()
                 ?.response?.trim()
         }.onFailure { e: Throwable ->
-            errorsCounter?.increment()
             logger.error("Error generating analysis with Ollama", e)
         }.getOrNull()
-        latencyTimer?.record(System.nanoTime() - start, java.util.concurrent.TimeUnit.NANOSECONDS)
         return result
     }
 
@@ -199,7 +201,7 @@ open class OllamaApiAdapter(
     val baseUrl = props.baseUrl
     val response = webClient.get().uri("${baseUrl}/api/tags")
             .retrieve()
-            .onStatus({ s -> s.value() == 429 }) { response -> throttledCounter?.increment(); response.createException() }
+            .onStatus({ s -> s.value() == 429 }) { response -> response.createException() }
             .bodyToMono(OllamaTagsResponse::class.java)
             .timeout(Duration.ofSeconds(10))
             .awaitSingleOrNull()

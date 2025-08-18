@@ -1,11 +1,23 @@
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.legistrack.ingestion
 
 import com.legistrack.domain.entity.Document
 import com.legistrack.domain.port.CongressPort
 import com.legistrack.domain.port.DocumentRepositoryPort
 import com.legistrack.domain.port.IngestionRunRepositoryPort
-import io.micrometer.core.instrument.MeterRegistry
-import io.micrometer.core.instrument.Timer
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -21,25 +33,9 @@ open class DataIngestionService(
     private val congressPort: CongressPort,
     private val documentRepositoryPort: DocumentRepositoryPort,
     private val ingestionRunRepositoryPort: IngestionRunRepositoryPort,
-    private val meterRegistry: MeterRegistry,
 ) {
     private val logger = LoggerFactory.getLogger(DataIngestionService::class.java)
-    private val successCounter = meterRegistry.counter("ingestion.run.success")
-    private val failureCounter = meterRegistry.counter("ingestion.run.failure")
-    private val skippedCounter = meterRegistry.counter("ingestion.run.skipped.idempotent")
-    private val durationTimer: Timer = Timer.builder("ingestion.run.duration").register(meterRegistry)
-    @Volatile private var lastDocumentCount: Int = 0
-    @Volatile private var runSuccesses: Double = 0.0
-    @Volatile private var runFailures: Double = 0.0
-
-    init {
-        // Derived gauges (avoid expensive lambda logic; simple volatile reads)
-        meterRegistry.gauge("ingestion.run.lastDocumentCount", this) { lastDocumentCount.toDouble() }
-        meterRegistry.gauge("ingestion.run.successRate", this) {
-            val total = runSuccesses + runFailures
-            if (total == 0.0) 0.0 else runSuccesses / total
-        }
-    }
+    // Metrics removed per requirement to strip instrumentation.
 
     /**
      * Build a normalized synthetic bill ID using canonical pattern TYPE+NUMBER-CONGRESS.
@@ -68,7 +64,7 @@ open class DataIngestionService(
         // Idempotency: skip if a successful run already exists for this fromDate
         ingestionRunRepositoryPort.findSuccessful(fromDate)?.let {
             logger.info("[Ingestion] Skipping ingestion for fromDate={} (already successful run id={})", fromDate, it.id)
-            skippedCounter.increment()
+            // Skipped ingestion (metrics removed)
             return 0
         }
         val run = ingestionRunRepositoryPort.create(fromDate)
@@ -79,7 +75,7 @@ open class DataIngestionService(
         var totalPersisted = 0
         var pageFetch = 0
         val maxPages = 20 // safety cap (configurable future)
-        val startNano = System.nanoTime()
+    // Timer instrumentation removed
         while (pageFetch < maxPages) {
             val page = congressPort.getRecentBills(fromDate, offset, pageSize)
             if (page.bills.isEmpty()) break
@@ -102,18 +98,11 @@ open class DataIngestionService(
             offset += pageSize
             pageFetch += 1
         }
-        val duration = System.nanoTime() - startNano
-        durationTimer.record(duration, java.util.concurrent.TimeUnit.NANOSECONDS)
         logger.info("[Ingestion] Completed ingestion: {} new documents (pages processed: {}, runId={})", totalPersisted, pageFetch + 1, runId)
         runId?.let { ingestionRunRepositoryPort.markSuccess(it, totalPersisted) }
-    successCounter.increment()
-    runSuccesses += 1.0
-    lastDocumentCount = totalPersisted
         totalPersisted
     } catch (e: Exception) {
         logger.error("[Ingestion] Failure during recent documents ingestion: ${e.message}", e)
-        failureCounter.increment()
-    runFailures += 1.0
         runId?.let { ingestionRunRepositoryPort.markFailure(it, e.message) }
         0
     }

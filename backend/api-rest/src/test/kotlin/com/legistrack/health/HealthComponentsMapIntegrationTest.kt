@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-package com.legistrack.controller
+package com.legistrack.health
 
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -28,16 +28,20 @@ import com.legistrack.testsupport.PostgresTestContainerConfig
 )
 @AutoConfigureWebTestClient
 @ActiveProfiles("test")
-class ExceptionMetricsIntegrationTest {
+class HealthComponentsMapIntegrationTest {
 
     @Autowired
     lateinit var webTestClient: WebTestClient
 
     @Test
-    fun should_incrementExceptionCounters_onRepeated404() {
-        repeat(2) {
-            webTestClient.get().uri("/api/documents/888888").exchange().expectStatus().isNotFound
-        }
-    // Metrics removed; test simply ensures 404 path functions without error
+    fun `should_includeExpectedComponentKeys_in_aggregate`() {
+        webTestClient.get().uri("/api/health/components")
+            .exchange()
+            .expectStatus().isOk
+            .expectBody()
+            .jsonPath("$.database").exists()
+            .jsonPath("$.cache").exists()
+            .jsonPath("$.congressApi").exists()
+            .jsonPath("$.ollama").exists()
     }
 }

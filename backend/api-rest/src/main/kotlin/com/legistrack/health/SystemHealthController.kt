@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.legistrack.health
 
 import com.legistrack.external.congress.CongressApiAdapter
@@ -15,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController
      val success: Boolean,
      val status: String,
      val congress: Map<String, Any?>,
+     val correlationId: String? = null,
      val timestamp: Long = System.currentTimeMillis()
  )
 
@@ -31,7 +46,8 @@ class SystemHealthController(
         val response = SystemHealthResponse(
             success = base.success,
             status = base.status,
-            congress = congressSnapshot
+            congress = congressSnapshot,
+            correlationId = base.correlationId
         )
         return ResponseEntity.ok(response as Any)
     }

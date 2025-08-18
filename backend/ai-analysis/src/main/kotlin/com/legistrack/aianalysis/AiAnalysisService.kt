@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.legistrack.aianalysis
 
 import com.legistrack.domain.port.AiAnalysisRepositoryPort
@@ -7,7 +21,6 @@ import com.legistrack.domain.entity.Document
 import com.legistrack.domain.port.DocumentRepositoryPort
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import io.micrometer.core.instrument.MeterRegistry
 import kotlin.system.measureTimeMillis
 
 /**
@@ -19,26 +32,9 @@ class AiAnalysisService(
     private val aiModelPort: AiModelPort,
     private val aiAnalysisRepositoryPort: AiAnalysisRepositoryPort,
     private val documentRepositoryPort: DocumentRepositoryPort,
-    private val meterRegistry: MeterRegistry? = null,
 ) {
     private val log = LoggerFactory.getLogger(AiAnalysisService::class.java)
-    private val prefix = "ai.analysis"
-    private val requestCounter by lazy { meterRegistry?.counter("$prefix.requests") }
-    private val failureCounter by lazy { meterRegistry?.counter("$prefix.failures") }
-    private val promptCharsCounter by lazy { meterRegistry?.counter("$prefix.prompt.chars") }
-    private val responseCharsCounter by lazy { meterRegistry?.counter("$prefix.response.chars") }
-    private val latencyTimer by lazy { meterRegistry?.timer("$prefix.latency") }
-    // Gauges for monitoring rolling success rate and size of last response chars (excludes prompts)
-    @Volatile private var recentSuccessCount: Long = 0
-    @Volatile private var recentFailureCount: Long = 0
-    @Volatile private var lastResponseChars: Long = 0
-    init {
-        meterRegistry?.gauge("$prefix.success.rate", this) { inst ->
-            val total = inst.recentSuccessCount + inst.recentFailureCount
-            if (total == 0L) 0.0 else inst.recentSuccessCount.toDouble() / total.toDouble()
-        }
-        meterRegistry?.gauge("$prefix.last.response.chars", this) { inst -> inst.lastResponseChars.toDouble() }
-    }
+    // Metrics removed per instrumentation strip requirement.
 
     suspend fun generateGeneralEffect(title: String, summary: String?): String? {
         if (!aiModelPort.isServiceReady()) return null
@@ -87,51 +83,32 @@ class AiAnalysisService(
         val title = document.title
         val summary = document.officialSummary
 
-        val prompts = mutableListOf<String>()
-    var general: String?
-    var economic: String?
-    var tags: List<String>
-        val elapsed = measureTimeMillis {
-            general = try {
-                val p = buildGeneralEffectPrompt(title, summary).also { prompts += it }
-                p.let { promptCharsCounter?.increment(it.length.toDouble()) }
-                generateGeneralEffect(title, summary)
-            } catch (e: Exception) {
-                failureCounter?.increment(); log.warn("Failed general effect generation for {}: {}", document.billId, e.message); null
-            }
-            economic = try {
-                val p = buildEconomicEffectPrompt(title, summary).also { prompts += it }
-                p.let { promptCharsCounter?.increment(it.length.toDouble()) }
-                generateEconomicEffect(title, summary)
-            } catch (e: Exception) {
-                failureCounter?.increment(); log.warn("Failed economic effect generation for {}: {}", document.billId, e.message); null
-            }
-            tags = try {
-                val p = buildIndustryTagsPrompt(title, summary).also { prompts += it }
-                p.let { promptCharsCounter?.increment(it.length.toDouble()) }
-                generateIndustryTags(title, summary)
-            } catch (e: Exception) {
-                failureCounter?.increment(); log.warn("Failed industry tags generation for {}: {}", document.billId, e.message); emptyList()
-            }
+        var general: String?
+        var economic: String?
+        var tags: List<String>
+        general = try {
+            generateGeneralEffect(title, summary)
+        } catch (e: Exception) {
+            log.warn("Failed general effect generation for {}: {}", document.billId, e.message); null
         }
-        latencyTimer?.record(java.time.Duration.ofMillis(elapsed))
-        var responseCharsTotal = 0
-        sequenceOf(general, economic).filterNotNull().forEach { resp ->
-            responseCharsCounter?.increment(resp.length.toDouble())
-            responseCharsTotal += resp.length
+        economic = try {
+            generateEconomicEffect(title, summary)
+        } catch (e: Exception) {
+            log.warn("Failed economic effect generation for {}: {}", document.billId, e.message); null
         }
-        val tagChars = tags.sumOf { it.length }
-        responseCharsCounter?.increment(tagChars.toDouble())
-        responseCharsTotal += tagChars
-        requestCounter?.increment()
+        tags = try {
+            generateIndustryTags(title, summary)
+        } catch (e: Exception) {
+            log.warn("Failed industry tags generation for {}: {}", document.billId, e.message); emptyList()
+        }
+    // Latency and size metrics removed
 
         val hasContent = !general.isNullOrBlank() || !economic.isNullOrBlank() || tags.isNotEmpty()
         if (!hasContent) {
             log.debug("No meaningful content generated for document {}, skipping persistence", document.billId)
-            recentFailureCount++
             return null
         }
-        
+
         val entity = AiAnalysis(
             documentId = requireNotNull(document.id) { "Document ID required to persist analysis" },
             generalEffectText = general,
@@ -140,17 +117,13 @@ class AiAnalysisService(
             isValid = true,
             modelUsed = modelName,
         )
-        
+
         return try {
             val savedEntity = aiAnalysisRepositoryPort.save(entity)
             log.info("Successfully persisted AI analysis for document {} with model {}", document.billId, modelName)
-            recentSuccessCount++
-            lastResponseChars = responseCharsTotal.toLong()
             savedEntity
         } catch (e: Exception) {
-            failureCounter?.increment()
             log.error("Failed to persist AI analysis for document {}: {}", document.billId, e.message, e)
-            recentFailureCount++
             null
         }
     }

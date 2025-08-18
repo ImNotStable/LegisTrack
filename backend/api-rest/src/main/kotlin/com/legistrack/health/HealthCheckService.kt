@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.legistrack.health
 
 import org.slf4j.LoggerFactory
@@ -8,8 +22,6 @@ import javax.sql.DataSource
 import org.springframework.data.redis.core.StringRedisTemplate
 import com.legistrack.domain.port.AiModelPort
 import com.legistrack.domain.port.CongressPort
-import io.micrometer.core.instrument.MeterRegistry
-import io.micrometer.core.instrument.Tag
 import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -37,11 +49,10 @@ class HealthCheckService(
     private val jdbcTemplate: JdbcTemplate,
     private val aiModelPort: AiModelPort,
     private val congressPort: CongressPort,
-    private val redisTemplate: StringRedisTemplate? = null,
-    private val meterRegistry: MeterRegistry? = null
+    private val redisTemplate: StringRedisTemplate? = null
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
-    private val registeredStatusGauges = mutableSetOf<String>()
+    // Metrics removed per instrumentation strip request.
 
     suspend fun health(): AggregateHealth = coroutineScope {
         // Run independent component checks concurrently to minimize endpoint latency.
@@ -103,7 +114,6 @@ class HealthCheckService(
             components = components.toSortedMap(),
             correlationId = MDC.get("correlationId")
         )
-    recordMetrics(aggregate)
     aggregate
     }
 
@@ -125,39 +135,4 @@ class HealthCheckService(
         return ComponentHealth(status = status, latencyMs = latency, message = msg, lastSuccessEpochMs = lastSuccess)
     }
 
-    private fun recordMetrics(aggregate: AggregateHealth) {
-        val registry = meterRegistry ?: return
-        val baseName = "health.component"
-        aggregate.components.forEach { (name, comp) ->
-            val statusValue = when (comp.status) {
-                "UP" -> 1.0
-                "DOWN" -> 0.0
-                "DEGRADED" -> 0.5
-                else -> -1.0
-            }
-            // Register/update status gauge (idempotent registration)
-            if (registeredStatusGauges.add(name)) {
-                registry.gauge(baseName + ".status", listOf(Tag.of("name", name)), statusValue) { statusValue }
-            }
-            // Use counter for transitions (increment on DOWN occurrences)
-            if (comp.status == "DOWN") registry.counter(baseName + ".down.count", "name", name).increment()
-            // Record latency if present
-            comp.latencyMs?.let { latency ->
-                registry.timer(baseName + ".latency", "name", name).record(latency, java.util.concurrent.TimeUnit.MILLISECONDS)
-            }
-        }
-        registry.counter("health.aggregate.invocations").increment()
-        val aggregateNumeric = when (aggregate.status) {
-            "UP" -> 1.0
-            "DEGRADED" -> 0.5
-            "DOWN" -> 0.0
-            else -> -1.0
-        }
-        registry.gauge("health.aggregate.status", listOf(Tag.of("status", aggregate.status)), aggregateNumeric)
-        // Gauge of number of critical components down
-        val criticalDownCount = aggregate.components.filter { (name, comp) ->
-            (name == "database" || name == "ollama") && comp.status == "DOWN"
-        }.count().toDouble()
-        registry.gauge("health.critical.down.count", criticalDownCount)
-    }
 }

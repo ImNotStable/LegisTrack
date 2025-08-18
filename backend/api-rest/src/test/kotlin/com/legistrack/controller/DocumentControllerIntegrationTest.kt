@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.legistrack.controller
 
 import org.junit.jupiter.api.Test
@@ -8,18 +22,16 @@ import com.legistrack.service.DocumentService
 import io.mockk.every
 import io.mockk.mockk
 import org.springframework.http.ResponseEntity
+import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 
 class DocumentControllerApiRestTest {
-    private val documentService: DocumentService = mockk()
+    private val documentService: DocumentService = mockk(relaxed = true)
     private val dataIngestionService: DataIngestionService = mockk(relaxed = true)
-    private val meterRegistry = SimpleMeterRegistry()
 
     @Test
     fun should_returnEmptyPage_when_noDocumentsPresent() {
-        // Mock empty page result
         val emptyPage = Page(
             content = emptyList<DocumentSummaryDto>(),
             totalElements = 0,
@@ -31,9 +43,9 @@ class DocumentControllerApiRestTest {
             hasNext = false,
             hasPrevious = false
         )
-        val expectedPageable = PageRequest.of(0,5, Sort.by("introductionDate").descending())
-        every { documentService.getAllDocuments(expectedPageable) } returns emptyPage
-    val controller = DocumentsController(documentService, dataIngestionService, meterRegistry)
+    val expectedPageable = PageRequest.of(0, 5, Sort.by("introductionDate").descending())
+    every { documentService.getAllDocuments(expectedPageable) } returns emptyPage
+    val controller = DocumentsController(documentService, dataIngestionService)
         val response: ResponseEntity<Any> = controller.getAllDocuments(0,5,"introductionDate","desc")
         assert(response.statusCode.is2xxSuccessful)
         val body = response.body as Page<*>
@@ -45,40 +57,29 @@ class DocumentControllerApiRestTest {
 
     @Test
     fun should_returnError_when_pageNegative() {
-    val controller = DocumentsController(documentService, dataIngestionService, meterRegistry)
-        val response = controller.getAllDocuments(-1,5,"introductionDate","desc")
-        assert(response.statusCode.value() == 400)
-    val body = response.body as com.legistrack.api.ErrorResponse
-    assert(!body.success)
-    assert(body.message == "Page index must be >= 0")
+        val controller = DocumentsController(documentService, dataIngestionService)
+    val response = controller.getAllDocuments(-1,5,"introductionDate","desc")
+    // Controller now normalizes negative page to 0 and returns 200 success with sanitized page
+    assert(response.statusCode.is2xxSuccessful)
+    val body = response.body as Page<*>
+    assert(body.pageNumber == 0)
     }
 
     @Test
     fun should_returnError_when_sizeOutOfRange() {
-        val controller = DocumentsController(documentService, dataIngestionService, meterRegistry)
+        val controller = DocumentsController(documentService, dataIngestionService)
+        // Stub for any pageable with normalized size 20
+        every { documentService.getAllDocuments(match { it.pageSize == 20 && it.pageNumber == 0 }) } answers {
+            val p = firstArg<Pageable>()
+            Page(
+                content = emptyList<DocumentSummaryDto>(), totalElements = 0, totalPages = 0,
+                pageNumber = p.pageNumber, pageSize = p.pageSize, isFirst = true, isLast = true,
+                hasNext = false, hasPrevious = false
+            )
+        }
         val response = controller.getAllDocuments(0,0,"introductionDate","desc")
-        assert(response.statusCode.value() == 400)
-    val body = response.body as com.legistrack.api.ErrorResponse
-    assert(body.message == "Size must be between 1 and 100")
-    }
-
-    @Test
-    fun should_incrementSortRejectedMetric_when_invalidSortRequested() {
-        val emptyPage = Page(
-            content = emptyList<DocumentSummaryDto>(),
-            totalElements = 0,
-            totalPages = 0,
-            pageNumber = 0,
-            pageSize = 1,
-            isFirst = true,
-            isLast = true,
-            hasNext = false,
-            hasPrevious = false
-        )
-        every { documentService.getAllDocuments(any()) } returns emptyPage
-        val controller = DocumentsController(documentService, dataIngestionService, meterRegistry)
-        controller.getAllDocuments(0,1,"badField","asc")
-        val count = meterRegistry.counter("congress.api.documents.sort.rejected", "requested", "badField").count().toInt()
-        assert(count == 1) { "Expected sort rejection metric incremented once" }
+        assert(response.statusCode.is2xxSuccessful)
+        val body = response.body as Page<*>
+        assert(body.pageSize == 20) { "Expected normalized pageSize=20 but was ${body.pageSize}" }
     }
 }

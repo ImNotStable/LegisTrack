@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.legistrack.controller
 
 import com.legistrack.domain.common.Page
@@ -11,14 +25,12 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-import io.micrometer.core.instrument.MeterRegistry
 
 @RestController
 @RequestMapping("/api/documents")
 class DocumentsController(
     private val documentService: DocumentService,
     private val dataIngestionService: DataIngestionService,
-    private val meterRegistry: MeterRegistry? = null,
 ) {
     private val allowedSortFields = setOf("introductionDate", "createdAt", "title")
 
@@ -39,7 +51,7 @@ class DocumentsController(
         }
         val normalized = normalizeSort(sortBy).also {
             if (!allowedSortFields.contains(sortBy)) {
-                meterRegistry?.counter("congress.api.documents.sort.rejected", "requested", sortBy)?.increment()
+                // Metric increment removed per instrumentation removal
             }
         }
         val sort = if (sortDir.lowercase() == "desc") Sort.by(normalized).descending() else Sort.by(normalized).ascending()

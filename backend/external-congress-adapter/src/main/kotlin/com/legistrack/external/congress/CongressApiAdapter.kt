@@ -1,3 +1,17 @@
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.legistrack.external.congress
 
 import com.legistrack.domain.port.CongressBillDetail
@@ -8,8 +22,6 @@ import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
-import io.micrometer.core.instrument.MeterRegistry
-import io.micrometer.core.instrument.Timer
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import org.springframework.cache.annotation.Cacheable
@@ -44,22 +56,14 @@ private data class CongressBillDetailWrapper(
 open class CongressApiAdapter(
     private val webClient: WebClient,
     private val props: CongressApiProperties,
-    private val meterRegistry: MeterRegistry? = null,
+    // Metrics removed per instrumentation removal requirement
 ) : CongressPort {
     companion object {
         private val logger = LoggerFactory.getLogger(CongressApiAdapter::class.java)
         private const val RETRY_DELAY_SECONDS = 2L
-        private const val METRIC_PREFIX = "congress.api"
+        // Metric prefix removed
     }
-
-    private val requestsCounter by lazy { meterRegistry?.counter("$METRIC_PREFIX.requests") }
-    private val errorCounter by lazy { meterRegistry?.counter("$METRIC_PREFIX.errors") }
-    private val throttledCounter by lazy { meterRegistry?.counter("$METRIC_PREFIX.throttled") } // backward compatibility
-    private val status429Counter by lazy { meterRegistry?.counter("$METRIC_PREFIX.status.429") }
-    private val cacheMissCounter by lazy { meterRegistry?.counter("$METRIC_PREFIX.cache.miss") } // TODO: deprecate once relying solely on built-in cache metrics
-    private val latencyTimer: (String, String) -> Timer? = { op, outcome ->
-        meterRegistry?.timer("$METRIC_PREFIX.latency", "operation", op, "outcome", outcome)
-    }
+    // Metric fields removed
     private val remainingGaugeHolder = AtomicInteger(-1)
     private val resetGaugeHolder = AtomicInteger(-1)
     private val limitGaugeHolder = AtomicInteger(-1)
@@ -68,41 +72,27 @@ open class CongressApiAdapter(
     private val consecutiveFailureHolder = AtomicInteger(0)
     private val breakerStateHolder = AtomicInteger(0) // 0 = closed, 1 = open
     @Volatile private var breakerOpenedAt: Long = -1L
-    private val shortCircuitCounter by lazy { meterRegistry?.counter("$METRIC_PREFIX.circuit.shortcircuits") }
-    private val circuitOpenCounter by lazy { meterRegistry?.counter("$METRIC_PREFIX.circuit.opened") }
-    private val adaptiveRetrySuppressedCounter by lazy { meterRegistry?.counter("$METRIC_PREFIX.retries.adaptive.suppressed") }
-    init {
-        meterRegistry?.gauge("$METRIC_PREFIX.rateLimit.remaining", remainingGaugeHolder) { remainingGaugeHolder.get().toDouble() }
-        meterRegistry?.gauge("$METRIC_PREFIX.rateLimit.resetSeconds", resetGaugeHolder) { resetGaugeHolder.get().toDouble() }
-        meterRegistry?.gauge("$METRIC_PREFIX.rateLimit.limit", limitGaugeHolder) { limitGaugeHolder.get().toDouble() }
-        // Derived percentage (0-100) or -1 if unknown
-        meterRegistry?.gauge("$METRIC_PREFIX.rateLimit.remainingPct", this) { adapter ->
-            val limit = adapter.limitGaugeHolder.get()
-            val remaining = adapter.remainingGaugeHolder.get()
-            if (limit > 0 && remaining >= 0) (remaining.toDouble() / limit.toDouble()) * 100.0 else -1.0
-        }
-        meterRegistry?.gauge("$METRIC_PREFIX.rateLimit.last429Epoch", last429EpochHolder) { last429EpochHolder.get().toDouble() }
-        meterRegistry?.gauge("$METRIC_PREFIX.circuit.consecutiveFailures", consecutiveFailureHolder) { consecutiveFailureHolder.get().toDouble() }
-        meterRegistry?.gauge("$METRIC_PREFIX.circuit.state", breakerStateHolder) { breakerStateHolder.get().toDouble() }
-        // Open duration (seconds) reports 0 when closed
-        meterRegistry?.gauge("$METRIC_PREFIX.circuit.openDurationSeconds", this) { adapter ->
-            if (adapter.breakerStateHolder.get() == 1 && adapter.breakerOpenedAt > 0) {
-                (System.nanoTime() - adapter.breakerOpenedAt).toDouble() / 1_000_000_000.0
-            } else 0.0
-        }
-    }
+    // Init block metrics removed
 
     private fun recordResponse(status: Int, headers: org.springframework.http.HttpHeaders) {
-        requestsCounter?.increment()
-        if (status == 429) {
-            throttledCounter?.increment()
-            status429Counter?.increment()
+    if (status == 429) {
             // Mark timestamp of latest throttling event
             last429EpochHolder.set(Instant.now().epochSecond.toInt())
-        } else if (status >= 500) errorCounter?.increment()
+    }
         headers.getFirst("x-ratelimit-remaining")?.toIntOrNull()?.let { remainingGaugeHolder.set(it) }
         headers.getFirst("x-ratelimit-reset")?.toIntOrNull()?.let { resetGaugeHolder.set(it) }
         headers.getFirst("x-ratelimit-limit")?.toIntOrNull()?.let { limitGaugeHolder.set(it) }
+        if (logger.isDebugEnabled) {
+            val rem = remainingGaugeHolder.get(); val lim = limitGaugeHolder.get(); val reset = resetGaugeHolder.get()
+            if (lim > 0 && rem >= 0) {
+                val pct = (rem.toDouble() / lim.toDouble()) * 100.0
+                logger.debug("Congress API rate-limit snapshot status={} remaining={} limit={} pct={} resetSec={} last429Epoch={}",
+                    status, rem, lim, String.format("%.2f", pct), if (reset >= 0) reset else null, last429EpochHolder.get().takeIf { it >= 0 })
+            } else {
+                logger.debug("Congress API rate-limit snapshot status={} remaining={} limit={} resetSec={} last429Epoch={}",
+                    status, rem, lim, if (reset >= 0) reset else null, last429EpochHolder.get().takeIf { it >= 0 })
+            }
+        }
     }
 
     private fun onFailure() {
@@ -110,7 +100,6 @@ open class CongressApiAdapter(
         if (breakerStateHolder.get() == 0 && failCount >= props.breakerThreshold) {
             breakerStateHolder.set(1)
             breakerOpenedAt = System.nanoTime()
-            circuitOpenCounter?.increment()
             logger.warn("Congress API circuit breaker opened after $failCount consecutive failures (threshold=${props.breakerThreshold})")
         }
     }
@@ -135,7 +124,6 @@ open class CongressApiAdapter(
 
     private inline fun <T> withBreaker(operation: String, fallback: () -> T, block: () -> T): T {
         if (breakerStateHolder.get() == 1 && !isCooldownElapsed()) {
-            shortCircuitCounter?.increment()
             logger.warn("Short-circuiting $operation due to open circuit breaker")
             return fallback()
         }
@@ -159,7 +147,7 @@ open class CongressApiAdapter(
             .doBeforeRetry { signal ->
                 val errorType = signal.failure()?.javaClass?.simpleName ?: "Unknown"
                 val attemptIndex = signal.totalRetries().toString()
-                meterRegistry?.counter("$METRIC_PREFIX.retries", "errorType", errorType, "attempt", attemptIndex)?.increment()
+                // Retry metric removed
             }
 
     private fun adaptiveRetryAttempts(): Long {
@@ -169,7 +157,7 @@ open class CongressApiAdapter(
         if (configured > 0 && limit > 0 && remaining >= 0) {
             val pct = (remaining.toDouble() / limit.toDouble()) * 100.0
             if (pct < props.retryAdaptiveThresholdPercent) { // low remaining budget - suppress retries
-                adaptiveRetrySuppressedCounter?.increment()
+                // Adaptive retry suppression metric removed
                 return 0
             }
         }
@@ -178,7 +166,6 @@ open class CongressApiAdapter(
 
     @Cacheable(value = ["congress-bills"], key = "'congress-bills_'+#fromDate.toString()+'_'+#offset+'_'+#limit")
     override suspend fun getRecentBills(fromDate: LocalDate, offset: Int, limit: Int): CongressBillsPage {
-    cacheMissCounter?.increment() // manual miss metric (method body executed)
     val start = System.nanoTime()
         val dateStr = fromDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
     val uri = UriComponentsBuilder.fromUriString(props.baseUrl)
@@ -207,19 +194,16 @@ open class CongressApiAdapter(
                 .awaitSingle()
             }
         }.getOrElse { e ->
-            errorCounter?.increment()
             outcome = "error"
             logger.error("Error fetching bills from Congress API", e); CongressBillsResponse()
         }
-    val duration = System.nanoTime() - start
-        latencyTimer("recentBills", outcome)?.record(duration, java.util.concurrent.TimeUnit.NANOSECONDS)
+    // Latency metric removed
         val summaries = response.bills.map { b -> CongressBillSummary(b.congress, b.number, b.type, b.title, b.introducedDate) }
         return CongressBillsPage(summaries)
     }
 
     @Cacheable(value = ["congress-bill-details"], key = "'congress-bill-details_'+#congress+'_'+#billType+'_'+#billNumber")
     override suspend fun getBillDetails(congress: Int, billType: String, billNumber: String): CongressBillDetail? {
-    cacheMissCounter?.increment()
     val start = System.nanoTime()
     val uri = UriComponentsBuilder.fromUriString(props.baseUrl)
             .path("/bill/{congress}/{type}/{number}")
@@ -253,12 +237,10 @@ open class CongressApiAdapter(
                 )
             }
         }.getOrElse { e ->
-            errorCounter?.increment()
             outcome = "error"
             logger.error("Error fetching bill details from Congress API", e); null
         }
-    val duration = System.nanoTime() - start
-        latencyTimer("billDetails", outcome)?.record(duration, java.util.concurrent.TimeUnit.NANOSECONDS)
+    // Latency metric removed
         return billSummary?.let { CongressBillDetail(it) }
     }
 
@@ -287,9 +269,7 @@ open class CongressApiAdapter(
                 .awaitSingleOrNull() != null
             }
         }.getOrDefault(false)
-    val duration = System.nanoTime() - start
     if (!result) outcome = "error"
-    latencyTimer("ping", outcome)?.record(duration, java.util.concurrent.TimeUnit.NANOSECONDS)
     return result
     }
 

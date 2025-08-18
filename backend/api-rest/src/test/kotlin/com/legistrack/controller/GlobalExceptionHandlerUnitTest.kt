@@ -22,9 +22,9 @@ import org.junit.jupiter.api.AfterEach
 import org.slf4j.MDC
 
 /**
- * Focused unit test for exception metrics without booting Spring context.
+ * Focused unit test for GlobalExceptionHandler correlation behavior without metrics instrumentation.
  */
-class GlobalExceptionMetricsUnitTest {
+class GlobalExceptionHandlerUnitTest {
     private val handler = GlobalExceptionHandler()
 
     @Test
@@ -33,13 +33,10 @@ class GlobalExceptionMetricsUnitTest {
         val notFoundResponse = handler.handleNotFound(NotFoundException("absent"))
         val genericResponse = handler.handleGeneric(RuntimeException("boom"))
 
-    // Correlation id should be propagated into responses
         assertThat(notFoundResponse.body?.correlationId).isEqualTo("unit-cid-1")
         assertThat(genericResponse.body?.correlationId).isEqualTo("unit-cid-1")
     }
 
     @AfterEach
-    fun cleanupMdc() {
-        MDC.clear()
-    }
+    fun cleanupMdc() { MDC.clear() }
 }

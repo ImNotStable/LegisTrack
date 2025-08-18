@@ -1,8 +1,21 @@
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.legistrack.health
 
 import com.legistrack.external.congress.CongressApiAdapter
 import com.legistrack.external.congress.CongressApiProperties
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
@@ -19,7 +32,6 @@ class SystemHealthControllerIntegrationTest {
 
     @Test
     fun should_includeCongressSnapshot() = runBlocking {
-        val registry = SimpleMeterRegistry()
         val props = CongressApiProperties(
             key = "test",
             baseUrl = "https://example.org",
@@ -29,8 +41,7 @@ class SystemHealthControllerIntegrationTest {
         )
         val adapter = CongressApiAdapter(
             webClient = WebClient.builder().build(),
-            props = props,
-            meterRegistry = registry
+            props = props
         )
         val cls = adapter::class.java
         cls.getDeclaredField("limitGaugeHolder").apply { isAccessible = true }

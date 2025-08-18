@@ -28,16 +28,16 @@ import com.legistrack.testsupport.PostgresTestContainerConfig
 )
 @AutoConfigureWebTestClient
 @ActiveProfiles("test")
-class ExceptionMetricsIntegrationTest {
+class ExceptionPathIntegrationTest {
 
     @Autowired
     lateinit var webTestClient: WebTestClient
 
     @Test
-    fun should_incrementExceptionCounters_onRepeated404() {
+    fun should_handleRepeated404s_withoutMetrics() {
         repeat(2) {
             webTestClient.get().uri("/api/documents/888888").exchange().expectStatus().isNotFound
         }
-    // Metrics removed; test simply ensures 404 path functions without error
+    // Ensures 404 path stable post-metrics removal
     }
 }
