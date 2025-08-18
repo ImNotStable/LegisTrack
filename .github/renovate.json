@@ -1,6 +1,6 @@
 {
-  $schema: "https://docs.renovatebot.com/renovate-schema.json",
-  extends: [
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
     "config:base",
     ":dependencyDashboard",
     ":semanticCommits",
@@ -9,77 +9,70 @@
     "group:recommended",
     "helpers:pinGitHubActionDigests"
   ],
-  labels: ["dependencies"],
-  timezone: "UTC",
-  schedule: ["before 7am on Monday"],
-  prHourlyLimit: 4,
-  prConcurrentLimit: 12,
-  dependencyDashboard: true,
-  rebaseWhen: "behind-base-branch",
-  branchConcurrentLimit: 12,
-  rangeStrategy: "replace",
-  platformAutomerge: true,
-  commitBodyTable: true,
-  enabledManagers: ["gradle", "npm", "dockerfile"],
-  gradle: {
-    enabled: true,
-    fileMatch: ["backend/.*\\.gradle(\\.kts)?$", "backend/gradle/libs\\.versions\\.toml"],
-    ignorePaths: ["**/build/**"],
-    semanticCommitType: "chore"
+  "labels": ["dependencies"],
+  "timezone": "UTC",
+  "schedule": ["before 7am on Monday"],
+  "prHourlyLimit": 4,
+  "prConcurrentLimit": 12,
+  "dependencyDashboard": true,
+  "rebaseWhen": "behind-base-branch",
+  "branchConcurrentLimit": 12,
+  "rangeStrategy": "replace",
+  "platformAutomerge": true,
+  "commitBodyTable": true,
+  "enabledManagers": ["gradle", "npm", "dockerfile"],
+  "gradle": {
+    "enabled": true,
+    "fileMatch": ["backend/.*\\.gradle(\\.kts)?$", "backend/gradle/libs\\.versions\\.toml"],
+    "ignorePaths": ["**/build/**"],
+    "semanticCommitType": "chore"
   },
-  npm: {
-    enabled: true,
-    fileMatch: ["frontend/package.json"],
-    semanticCommitType: "chore",
-    postUpdateOptions: ["npmDedupe"],
-    // Prefer minor/patch automerge when tests pass
-    packageRules: [
+  "npm": {
+    "enabled": true,
+    "fileMatch": ["frontend/package.json"],
+    "semanticCommitType": "chore",
+    "postUpdateOptions": ["npmDedupe"],
+    "packageRules": [
       {
-        matchUpdateTypes: ["minor", "patch"],
-        automerge: true,
-        automergeType: "pr",
-        requiredStatusChecks: null
+        "matchUpdateTypes": ["minor", "patch"],
+        "automerge": true,
+        "automergeType": "pr",
+        "requiredStatusChecks": null
       }
     ]
   },
-  dockerfile: {
-    enabled: true,
-    fileMatch: ["Dockerfile", "**/Dockerfile"],
-    semanticCommitType: "chore"
+  "dockerfile": {
+    "enabled": true,
+    "fileMatch": ["Dockerfile", "**/Dockerfile"],
+    "semanticCommitType": "chore"
   },
-  packageRules: [
-    // Group Kotlin ecosystem updates
+  "packageRules": [
     {
-      groupName: "kotlin-stack",
-      matchPackagePatterns: ["^org.jetbrains.kotlin", "^org.jetbrains.kotlinx", "ktlint", "detekt"],
-      prPriority: 20
+      "groupName": "kotlin-stack",
+      "matchPackagePatterns": ["^org.jetbrains.kotlin", "^org.jetbrains.kotlinx", "ktlint", "detekt"],
+      "prPriority": 20
     },
-    // Group Spring Boot + Spring Cloud
     {
-      groupName: "spring-platform",
-      matchPackagePatterns: ["^org.springframework", "spring-boot", "spring-cloud"],
-      prPriority: 25
+      "groupName": "spring-platform",
+      "matchPackagePatterns": ["^org.springframework", "spring-boot", "spring-cloud"],
+      "prPriority": 25
     },
-    // Security patches escalate
     {
-      matchUpdateTypes: ["digest", "major"],
-      matchDepTypes: ["dependencies"],
-      prPriority: 30
+      "matchUpdateTypes": ["digest", "major"],
+      "matchDepTypes": ["dependencies"],
+      "prPriority": 30
     },
-    // Automerge GitHub Actions patch updates
     {
-      matchManagers: ["github-actions"],
-      matchUpdateTypes: ["patch", "minor"],
-      automerge: true,
-      automergeType: "branch"
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true,
+      "automergeType": "branch"
     }
   ],
-  vulnerabilityAlerts: {
-    labels: ["security", "dependencies"],
-    automerge: false
+  "vulnerabilityAlerts": {
+    "labels": ["security", "dependencies"],
+    "automerge": false
   },
-  onboarding: false,
-  regexManagers: [
-    // Extract versions from libs.versions.toml (handled by gradle manager but sample placeholder if custom patterns added later)
-  ]
+  "onboarding": false,
+  "regexManagers": []
 }
