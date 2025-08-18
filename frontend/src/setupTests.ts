@@ -5,42 +5,50 @@
 import '@testing-library/jest-dom';
 
 class MockIntersectionObserver {
-  callback: (entries: IntersectionObserverEntry[]) => void;
-  constructor(cb: (entries: IntersectionObserverEntry[]) => void) {
-    this.callback = cb;
-  }
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-  trigger(entries: Partial<IntersectionObserverEntry>[]) {
-    // @ts-ignore
-    this.callback(entries as IntersectionObserverEntry[]);
-  }
+	private readonly callback: (entries: IntersectionObserverEntry[]) => void;
+	constructor(cb: (entries: IntersectionObserverEntry[]) => void) {
+		this.callback = cb;
+	}
+	observe(): void {
+		// simulate immediate intersection for tests if needed
+	}
+	unobserve(): void {
+		// noop
+	}
+	disconnect(): void {
+		// noop
+	}
+	trigger(entries: Partial<IntersectionObserverEntry>[]): void {
+		this.callback(entries as IntersectionObserverEntry[]);
+	}
 }
 
-// @ts-ignore
-(global as any).IntersectionObserver = MockIntersectionObserver as any;
+(
+	globalThis as unknown as {
+		IntersectionObserver: typeof MockIntersectionObserver;
+	}
+).IntersectionObserver = MockIntersectionObserver as any;
 
 // Mock ResizeObserver which is not available in test environment
 global.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
+	observe: jest.fn(),
+	unobserve: jest.fn(),
+	disconnect: jest.fn(),
 }));
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: jest.fn().mockImplementation(query => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(), // deprecated
-    removeListener: jest.fn(), // deprecated
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
+	writable: true,
+	value: jest.fn().mockImplementation((query) => ({
+		matches: false,
+		media: query,
+		onchange: null,
+		addListener: jest.fn(), // deprecated
+		removeListener: jest.fn(), // deprecated
+		addEventListener: jest.fn(),
+		removeEventListener: jest.fn(),
+		dispatchEvent: jest.fn(),
+	})),
 });
 
 // Mock scrollTo
@@ -48,10 +56,8 @@ window.scrollTo = jest.fn();
 
 // Mock history APIs missing in JSDOM
 if (!window.history.pushState) {
-  // @ts-ignore
-  window.history.pushState = jest.fn();
+	(window.history as any).pushState = jest.fn();
 }
 if (!window.history.replaceState) {
-  // @ts-ignore
-  window.history.replaceState = jest.fn();
+	(window.history as any).replaceState = jest.fn();
 }
