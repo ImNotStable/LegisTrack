@@ -28,11 +28,16 @@ jobs:
       - name: Gradle Wrapper Validation
         uses: gradle/wrapper-validation-action@v2
 
-      - name: Build and Test
+      - name: Build (No Tests)
         working-directory: backend
         run: |
           chmod +x ./gradlew
-          ./gradlew --no-daemon clean ktlintCheck test
+          ./gradlew --no-daemon clean build -x test
+
+      - name: Run Tests + Static Checks
+        working-directory: backend
+        run: |
+          ./gradlew --no-daemon ktlintCheck spotlessCheck test
 
       - name: Publish Test Report (if failed)
         if: failure()
@@ -41,6 +46,11 @@ jobs:
           name: backend-test-reports
           path: backend/build/reports/**
 
+  - name: Dependency Updates Report (PR only)
+    if: github.event_name == 'pull_request'
+    working-directory: backend
+    run: ./gradlew --no-daemon dependencyUpdatesFiltered
+
   frontend:
     name: Frontend (Node + Tests)
     runs-on: ubuntu-latest
@@ -48,10 +58,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+    - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+      node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -62,6 +72,33 @@ jobs:
       - name: Run Tests
         working-directory: frontend
         run: npm run test:ci
+
+      - name: Outdated Dependencies (PR only)
+        if: github.event_name == 'pull_request'
+        working-directory: frontend
+        run: npm run dep:outdated
+
+      - name: Audit (PR only)
+        if: github.event_name == 'pull_request'
+        working-directory: frontend
+        run: npm run dep:audit
+
+  formatting-only:
+    name: Formatting & License Headers
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Spotless Check
+        working-directory: backend
+        run: ./gradlew --no-daemon spotlessCheck
 
       - name: Publish Coverage (if any)
         if: always()

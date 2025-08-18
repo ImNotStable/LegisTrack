@@ -9,6 +9,8 @@ plugins {
     alias(libs.plugins.kotlin.plugin.allopen)
     alias(libs.plugins.kotlin.plugin.noarg)
     alias(libs.plugins.ktlint)
+    id("com.diffplug.spotless") version "6.25.0" // tooling plugin explicit (not in version catalog yet)
+    id("com.github.ben-manes.versions") version "0.51.0" // dependency update audit
 }
 
 group = "com.legistrack"
@@ -106,6 +108,19 @@ tasks {
     named("check") {
         dependsOn("ktlintCheck")
     }
+
+    // Show dependency updates (reject non-stable if current is stable)
+    register<DependencyUpdatesTask>("dependencyUpdatesFiltered") {
+        rejectVersionIf {
+            val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { candidate.version.uppercase().contains(it) }
+            val regex = "^(?!.*(alpha|beta|rc|cr|m|preview|b\d)).*".toRegex(RegexOption.IGNORE_CASE)
+            val isStable = stableKeyword || candidate.version.matches(regex)
+            val currentStable = stableKeyword || currentVersion.matches(regex)
+            currentStable && !isStable
+        }
+        checkForGradleUpdate = true
+        outputFormatter = "plain"
+    }
 }
 
 // Detekt static analysis
@@ -158,5 +173,27 @@ ktlint {
         exclude("**/*.gradle.kts") // keep build scripts out of style checks
     }
 }
+
+// Spotless for license headers & formatting (focus on header only to reduce churn)
+spotless {
+    ratchetFrom("origin/main")
+    kotlin {
+        target("**/src/**/*.kt")
+        licenseHeaderFile(rootProject.file("config/spotless/license-header.txt"))
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    kotlinGradle {
+        target("**/*.gradle.kts")
+        licenseHeaderFile(rootProject.file("config/spotless/license-header.txt"), "(plugins|import|// root)")
+    }
+    format("misc") {
+        target("**/*.md", "**/.gitignore")
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+tasks.named("check") { dependsOn("spotlessCheck") }
 
 // AOT related tasks removed from root after api-rest extraction
