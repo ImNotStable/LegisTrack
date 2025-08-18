@@ -8,7 +8,7 @@ AI-powered legislative document tracking and analysis platform that combines rea
 [![React](https://img.shields.io/badge/react-%2320232a.svg?style=flat&logo=react&logoColor=%2361DAFB)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-[Quick Start](#quick-start) • [Architecture](#architecture) • [API Documentation](#api-documentation) • [Development](#development)
+[Quick Start](#quick-start) • [Architecture](#architecture) • [API Documentation](#api-documentation) • [Development](#development) • [Knowledge Base](#knowledge-base-obsidian-vault)
 
 ## Overview
 
@@ -108,6 +108,57 @@ LegisTrack/
 └── docker-compose.yml        # Development stack
 ```
 
+## Knowledge Base (Obsidian Vault)
+
+An internal engineering & domain knowledge base lives in an Obsidian vault at `obsidian/LegisTrack`. This lets contributors keep architecture decision records (ADRs), ingestion nuances, AI prompt rationale, and operational runbooks close to the code while avoiding cluttering the root with many markdown files.
+
+### Opening the Vault
+
+1. Install [Obsidian](https://obsidian.md/)
+2. In Obsidian choose: "Open folder as vault" and select `obsidian/LegisTrack`
+3. The starter note `Welcome.md` can be replaced with project specific overview (do so in a focused PR)
+
+### What Gets Committed
+
+Tracked (stable / intentional):
+- `*.md` knowledge notes
+- `.obsidian/core-plugins.json` (enables a minimal, consistent plugin set)
+- `.obsidian/app.json` (kept minimal / empty to avoid user‑specific settings bleed)
+
+Ignored (volatile / personal layout):
+- `.obsidian/workspace.json` (pane/layout state)
+- `.obsidian/graph.json`, `appearance.json` (visual prefs)
+- Undo history and transient caches
+
+Rationale: keeping only deterministic config prevents noisy diffs while ensuring every contributor gets the same baseline features (file explorer, search, backlinks, etc.).
+
+### Authoring Guidelines
+
+| Guideline | Reason |
+|-----------|-------|
+| Prefer small, focused notes over large monolith pages | Easier linking & reuse |
+| Use `[[Wiki Links]]` between related concepts (e.g., `[[Ingestion Pipeline]]`) | Builds graph context for discovery |
+| Start any Architecture Decision with filename prefix `ADR-XXXX-` | Enables chronological sorting |
+| Never store secrets, API keys, or proprietary data | Security (SEC) priority |
+| Keep runtime operational logs out of the vault | Prevent repo bloat |
+| Do NOT add new markdown files outside this vault (except updating `README.md`) | Enforces doc locality per project rules |
+
+### Adding New Knowledge
+
+1. Create or open a note inside the vault
+2. Link it from an appropriate index note (create `Index.md` if helpful)
+3. Commit with a message like: `docs(vault): add ADR-0123 ingestion retry tuning`
+
+### Future Enhancements
+
+Potential low‑risk improvements (not yet implemented):
+- Introduce an `Index.md` or `README.md` inside the vault acting as a table of contents
+- Add lightweight tagging conventions (e.g., `#adr`, `#runbook`, `#prompt`)
+- Script to export selected notes to external docs site (out of scope now)
+
+These should be proposed in an issue referencing priorities (SEC > DATA > CORR > REL ...) before implementation.
+
+
 ## Prerequisites
 
 - Docker 24.0+ and Docker Compose 2.0+
@@ -184,6 +235,8 @@ All configuration properties above now use Bean Validation to fail fast on inval
 
 Invalid settings surface as clear startup exceptions instead of latent runtime errors. When adding new fields, prefer adding appropriate `@NotBlank`, `@Min`, `@Max`, or `@Pattern` constraints and safe defaults so CI/test profiles still load.
 
+Note (Aug 2025): A brief `CongressApiPropertiesEagerValidator` component introduced during the metrics removal refactor has been removed as redundant. Validation now deterministically occurs in the `CongressApiProperties` `init {}` block (in addition to Bean Validation annotations) ensuring an immediate and side‑effect free fail-fast path without extra Spring lifecycle hooks.
+
 ### Environment Variables
 
 | Variable | Default | Description |
@@ -201,93 +254,22 @@ Additional adaptive suppression tuning property:
 
 Config property: `app.congress.api.retry-adaptive-threshold-percent` (default 10). When both rate limit headers (`x-ratelimit-limit` and `x-ratelimit-remaining`) are present and the remaining percentage falls **below** this threshold, any further retry attempts for that call are suppressed (behaves as if configured attempts were 0). Each suppression increments the metric `congress.api.retries.adaptive.suppressed`. Lower this value to allow more aggressive retrying under tight quotas; raise it if you prefer to conserve quota earlier. ([PERF] vs [DATA] trade‑off guidance: prioritize quota preservation when upstream limits are scarce.)
 
-#### Ollama AI Metrics (prefix `ollama.api`)
-- `ollama.api.requests` Counter of generate requests attempted
-- `ollama.api.errors` Counter of failed generate requests
-- `ollama.api.latency` Timer recording end-to-end generation latency (per attempt, includes retries)
+#### Observability & Metrics (Simplified)
+Micrometer-based metrics (counters, timers, gauges for caches, adapters, AI analysis, health, ingestion) were removed in August 2025 to reduce complexity. The application no longer exposes rich `/actuator/metrics` data; only health endpoints remain for liveness/readiness.
 
-#### Cache Metrics (prefix `cache`)
-Lightweight counters emitted for every cache (Redis + local) via an instrumented `CacheManager`:
-- `cache.requests` Total get invocations (all variants)
-- `cache.hits` Successful lookups returning a non-null value
-- `cache.misses` Lookups that returned null
-Tag: `name=<cacheName>` allowing per-cache dashboards and hit ratio calculation `(hits / requests)`.
+Current state:
+- Health: `/api/health` and component endpoints still return JSON status.
+- Retry & circuit breaker logic continue to function internally without emitting metrics.
+- Ingestion status endpoint still provides operational insights: `GET /api/ingestion/status`.
 
-Derived ratio gauges:
-- `cache.hit.ratio` Gauge of `hits / requests` per cache (tag `name=<cacheName>`). Value is -1 until at least one request (sentinel for uninitialized to avoid divide-by-zero / NaN).
-- `cache.miss.ratio` Gauge of `misses / requests` per cache (tag `name=<cacheName>`). Also -1 until at least one request. Together ratios sum to 1 once initialized.
+If deeper observability becomes necessary, recommended approaches:
+1. Structured logging (latency ms, outcome, correlationId) aggregated in your log backend.
+2. Reintroduce Micrometer selectively in a dedicated module for truly critical timers.
+3. Adopt OpenTelemetry tracing for distributed scenarios.
 
-Load latency timer:
-- `cache.load.latency` Timer capturing the execution duration of value loader functions (`get(key, valueLoader)`) for caches (tag `name=<cacheName>`). Use histogram/percentiles to identify slow cache population operations distinct from downstream request latency.
+Test suite adjustments (Aug 2025): Legacy test names containing *Metrics* were renamed (e.g. `ExceptionMetricsIntegrationTest` -> `ExceptionPathIntegrationTest`, `GlobalExceptionMetricsUnitTest` -> `GlobalExceptionHandlerUnitTest`) to reflect that instrumentation no longer exists. Added `HealthEndpointsIntegrationTest` to assert health JSON structure without relying on metrics endpoints.
 
-Eviction & size metrics:
-- `cache.evictions` Counter incremented on explicit evict(key) calls (tag `name=<cacheName>`)
-- `cache.clears` Counter incremented when an entire cache is cleared (tag `name=<cacheName>`)
-- `cache.size` Gauge estimating current entry count for map-backed caches; -1 when size cannot be determined (e.g., remote Redis abstraction without local size visibility)
-
-#### Congress API Metrics (prefix `congress.api`)
-Previously added request/error/throttle counters and rate limit gauges (documented here for central reference):
-- `congress.api.requests` Outbound calls attempted
-- `congress.api.errors` Calls ending in server error (>=500) or decoding failure
-- `congress.api.throttled` HTTP 429 responses (legacy name kept for dashboards)
-- `congress.api.status.429` HTTP 429 responses (new standardized naming)
-- `congress.api.rateLimit.remaining` Gauge of latest X-RateLimit-Remaining header
-- `congress.api.rateLimit.resetSeconds` Gauge of latest X-RateLimit-Reset header (seconds)
- - `congress.api.rateLimit.limit` Gauge of latest X-RateLimit-Limit header
- - `congress.api.rateLimit.remainingPct` Derived percentage (remaining/limit * 100) or -1 if unknown
- - `congress.api.rateLimit.last429Epoch` Epoch seconds of most recent 429
- - `congress.api.latency` Timer with tags `operation` (recentBills|billDetails|ping) and `outcome` (success|error) – histogram + p95/p99 percentiles enabled
- - `congress.api.cache.miss` Counter of method body executions (simple cache miss approximation)
- - Circuit breaker metrics:
-     - `congress.api.circuit.state` Gauge (0 closed / 1 open)
-     - `congress.api.circuit.consecutiveFailures` Gauge tracking rolling failure streak
-     - `congress.api.circuit.opened` Counter increments each transition to OPEN
-     - `congress.api.circuit.shortcircuits` Counter of calls skipped due to OPEN state
-     - `congress.api.circuit.openDurationSeconds` Gauge reporting seconds since breaker opened (0 when closed)
- - Retry metrics:
-     - `congress.api.retries` Counter tagged by `errorType` and `attempt` (0..n-1) incremented before each retry attempt
-     - `congress.api.retries.adaptive.suppressed` Counter increments when configured retries are suppressed because remaining rate limit <10%
- - Documents controller metric:
-     - `congress.api.documents.sort.rejected` Counter tagged with `requested=<field>` when invalid sort field is rejected
-
-#### Ollama API Metrics (prefix `ollama.api`)
-- `ollama.api.requests` Generate attempts
-- `ollama.api.errors` Failed generate attempts
-- `ollama.api.latency` Timer for end-to-end generate duration
-- `ollama.api.status.429` HTTP 429 responses encountered
-
-#### AI Analysis Orchestration Metrics (prefix `ai.analysis`)
-Emitted by internal orchestration service when generating and persisting analysis:
-- `ai.analysis.requests` Successful orchestration cycles attempted (including those with partial content)
-- `ai.analysis.failures` Failures across generation or persistence steps
-- `ai.analysis.prompt.chars` Total prompt characters submitted (counter)
-- `ai.analysis.response.chars` Total response characters received (counter, includes tags aggregate length)
-- `ai.analysis.latency` Timer capturing end-to-end multi‑prompt generation + persistence duration
- - `ai.analysis.success.rate` Gauge of (successful persisted analyses / (success + failures)) since process start
- - `ai.analysis.last.response.chars` Gauge of character count of the last successful persisted analysis (aggregated general+economic+tags characters)
-
-#### Health Metrics (prefix `health`)
-- `health.component.status` Gauge (value: 1.0 UP / 0.5 DEGRADED / 0.0 DOWN / -1 UNKNOWN) tagged by `name`
-- `health.component.latency` Timer per component
-- `health.component.down.count` Counter incremented on DOWN occurrences per component
-- `health.aggregate.status` Gauge representing overall status
-- `health.aggregate.invocations` Counter of aggregate health calls
-- `health.critical.down.count` Gauge of number of critical components currently DOWN
-Component JSON now includes `lastSuccessEpochMs` (ms since epoch) when component status is not DOWN.
-
-#### Ingestion Run Metrics (prefix `ingestion.run`)
-Idempotent ingestion ledger ensures only one SUCCESS run per `fromDate` (7-day window by scheduler default).
-
-- `ingestion.run.success` Counter of successful ingestion runs
-- `ingestion.run.failure` Counter of failed runs (exception paths)
-- `ingestion.run.skipped.idempotent` Counter of skipped runs because a SUCCESS already exists for the `fromDate`
-- `ingestion.run.duration` Timer capturing wall-clock duration of ingestion loop (pages fetch + persistence)
-- `ingestion.run.lastDocumentCount` Gauge holding document count from most recent successful run
-- `ingestion.run.successRate` Gauge (successes / (successes + failures)) since process start
-
-Schema (Flyway V3) introduces `ingestion_runs` table with partial unique index enforcing single SUCCESS per `from_date`.
-
-Ingestion status endpoint: `GET /api/ingestion/status` returns JSON with latest run, latest success, latest failure, and derived successRate.
+Refer to Git history prior to the metrics removal commit for the legacy list of metric names if migration of dashboards is needed.
 
 #### Input Validation (Documents API)
 The documents listing and search endpoints now enforce explicit bounds (rather than silently coercing):
@@ -308,8 +290,45 @@ In addition to aggregate `/api/health` and `/api/health/components`, explicit sh
 |----------|---------------|-------------|
 | `/api/health/congress` | `congressApi` | Congress API health snapshot |
 | `/api/health/ollama` | `ollama` | Ollama (AI model) health snapshot |
+| `/api/health/database` | `database` | Database connectivity health |
+| `/api/health/cache` | `cache` | Redis cache health (DEGRADED/UNKNOWN when unavailable) |
+
+Unknown component requests (e.g. `/api/health/doesNotExist`) return HTTP 404 with the standard error envelope including `correlationId`.
 
 Each returns a `ComponentHealth` JSON structure identical to entries in the aggregate response (fields: `status`, `latencyMs`, `message`, `lastSuccessEpochMs`).
+
+#### System Health Endpoint (Aggregate + Congress Snapshot)
+
+The endpoint `GET /api/system/health` returns the aggregate platform health plus a lightweight snapshot of the Congress API adapter's internal state (rate limit & circuit breaker) without performing any outbound network calls. This allows dashboards to show quota burn-down and breaker state alongside overall service readiness.
+
+Response shape:
+```json
+{
+    "success": true,
+    "status": "UP",
+    "congress": {
+        "circuitState": "CLOSED",
+        "consecutiveFailures": 0,
+        "rateLimitRemaining": 50,
+        "rateLimitLimit": 100,
+        "rateLimitResetSeconds": 30,
+        "rateLimitRemainingPct": 50.0,
+        "last429Epoch": null,
+        "circuitOpenDurationSeconds": 0.0
+    },
+    "correlationId": "<uuid>",
+    "timestamp": 1755491382233
+}
+```
+
+Field notes:
+- `success` / `status`: mirror the aggregate `/api/health` evaluation (critical component failures set `success=false`).
+- `congress.*`: point-in-time counters & derived percentages; values may be `null` when not yet observed (e.g., before first 429).
+- `circuitOpenDurationSeconds`: non-zero only while breaker is OPEN.
+- `correlationId`: echoed from inbound request header (or generated) for traceability; present for parity with error envelopes.
+- `timestamp`: server epoch millis at snapshot creation.
+
+The snapshot intentionally omits transient latency measurements to keep it side-effect free and cheap. For deeper diagnostics, rely on structured logs (breaker transitions, rate limit header ingestion). If future needs arise, consider adding a `components` block here instead of issuing two separate calls.
 
 #### Congress API Retry Strategy
 Outbound Congress API calls use exponential backoff with jitter (base 2s, configured attempts via `app.congress.api.retry-attempts`). Full jitter (0–delay window) reduces coordinated retries. A 429 (rate limit) or >=500 response will be retried up to the configured attempts.
@@ -452,7 +471,7 @@ docker compose up -d --scale backend=3
 - Use managed PostgreSQL and Redis services
 - Set environment variables via secret management
 - Enable HTTPS and configure CORS for your domain
-- Monitor health endpoints: `/actuator/health`, `/actuator/metrics`
+- Monitor health endpoint: `/actuator/health` (metrics endpoint removed after instrumentation simplification)
 
 
 
@@ -513,8 +532,8 @@ Standard error envelope (all failures):
 
 Enhancements:
 - Global `@RestControllerAdvice` injects `correlationId` (from `X-Correlation-Id` header or generated) in every error.
-- Exception metrics: `api.exceptions.total` and `api.exceptions.byType{type=<Category>}`.
 - 404 resources raise `NotFoundException` mapped to HTTP 404 with consistent body.
-- Congress adapter retry attempts tracked via `congress.api.retries{errorType=<ExceptionSimpleName>}`.
+- (Removed) Exception and retry metrics once emitted via Micrometer.
+- Correlation-aware logging pattern (see `logback-spring.xml`) includes `trace=<correlationId>` for each line.
 
 Correlation IDs propagate to outbound WebClient calls for trace continuity. Always include the `X-Correlation-Id` header in client requests when chaining across services.
