@@ -9,7 +9,7 @@ import kotlinx.coroutines.reactor.awaitSingleOrNull
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
@@ -29,10 +29,7 @@ private data class OllamaPullRequest(val name: String)
 @Component
 open class OllamaApiAdapter(
     private val webClient: WebClient,
-    // Provide safe defaults so the bean can initialize in test profile without explicit properties
-    @Value("\${app.ollama.base-url:}") private val baseUrl: String,
-    @Value("\${app.ollama.model:mock}") private val modelName: String,
-    @Value("\${app.ollama.bootstrap.enabled:false}") private val bootstrapEnabled: Boolean,
+    private val props: OllamaProperties,
     private val meterRegistry: MeterRegistry? = null,
 ) : AiModelPort {
     companion object {
@@ -62,16 +59,17 @@ open class OllamaApiAdapter(
 
     @EventListener(ApplicationReadyEvent::class)
     fun initializeOllamaService() {
-        if (baseUrl.isBlank()) {
+    val baseUrl = props.baseUrl
+    if (baseUrl.isBlank()) {
             logger.info("Ollama base URL is not configured; AI analysis will be disabled")
             serviceReady = false
             return
         }
-        if (!bootstrapEnabled) {
+    if (!props.bootstrapEnabled) {
             logger.info("Ollama bootstrap disabled via configuration; skipping initialization")
             return
         }
-        logger.info("Starting Ollama service initialization with model: {}", modelName)
+    logger.info("Starting Ollama service initialization with model: {}", props.model)
         coroutineScope.launch {
             try {
                 waitForOllamaService()
@@ -88,7 +86,8 @@ open class OllamaApiAdapter(
     private suspend fun waitForOllamaService() {
         val maxAttempts = (MAX_SERVICE_WAIT_MINUTES * 60) / SERVICE_AVAILABILITY_CHECK_INTERVAL_SECONDS
         var attempts = 0
-        logger.info("Waiting for Ollama service to become available at: {}", baseUrl)
+    val baseUrl = props.baseUrl
+    logger.info("Waiting for Ollama service to become available at: {}", baseUrl)
         while (attempts < maxAttempts) {
             try {
                 val response = webClient.get().uri("$baseUrl/api/tags")
@@ -111,19 +110,20 @@ open class OllamaApiAdapter(
 
     private suspend fun ensureModelAvailable() {
         if (isModelAvailable()) {
-            logger.info("Model {} is already available", modelName)
+            logger.info("Model {} is already available", props.model)
             return
         }
-        logger.info("Model {} not found, initiating download", modelName)
+        logger.info("Model {} not found, initiating download", props.model)
         downloadModel()
         waitForModelDownload()
     }
 
     private suspend fun downloadModel() {
         try {
-            val request = OllamaPullRequest(name = modelName)
-            logger.info("Sending model download request for: {}", modelName)
-            webClient.post().uri("$baseUrl/api/pull")
+            val baseUrl = props.baseUrl
+            val request = OllamaPullRequest(name = props.model)
+            logger.info("Sending model download request for: {}", props.model)
+            webClient.post().uri("${baseUrl}/api/pull")
                 .bodyValue(request)
                 .retrieve()
                 .bodyToMono(String::class.java)
@@ -139,13 +139,13 @@ open class OllamaApiAdapter(
     private suspend fun waitForModelDownload() {
         val maxAttempts = (MAX_MODEL_WAIT_MINUTES * 60) / MODEL_DOWNLOAD_CHECK_INTERVAL_SECONDS
         var attempts = 0
-        logger.info("Waiting for model {} download to complete", modelName)
+    logger.info("Waiting for model {} download to complete", props.model)
         while (attempts < maxAttempts) {
             if (isModelAvailable()) {
-                logger.info("Model {} download completed successfully", modelName)
+                logger.info("Model {} download completed successfully", props.model)
                 return
             }
-            logger.debug("Model {} not yet available, waiting... (attempt {}/{})", modelName, attempts + 1, maxAttempts)
+            logger.debug("Model {} not yet available, waiting... (attempt {}/{})", props.model, attempts + 1, maxAttempts)
             attempts++
             delay(MODEL_DOWNLOAD_CHECK_INTERVAL_SECONDS * 1000)
         }
@@ -162,7 +162,7 @@ open class OllamaApiAdapter(
             return null
         }
         val request = OllamaGenerateRequest(
-            model = modelName,
+            model = props.model,
             prompt = prompt,
             stream = false,
             options = OllamaOptions(
@@ -171,11 +171,12 @@ open class OllamaApiAdapter(
                 numCtx = DEFAULT_CONTEXT_SIZE,
             ),
         )
-        logger.debug("Sending request to Ollama: model={}, prompt length={}", modelName, prompt.length)
+    val baseUrl = props.baseUrl
+    logger.debug("Sending request to Ollama: model={}, prompt length={}", props.model, prompt.length)
         requestsCounter?.increment()
         val start = System.nanoTime()
         val result = runCatching {
-            webClient.post().uri("$baseUrl/api/generate")
+            webClient.post().uri("${baseUrl}/api/generate")
                 .bodyValue(request)
                 .retrieve()
                 .onStatus({ s -> s.value() == 429 }) { response ->
@@ -195,13 +196,14 @@ open class OllamaApiAdapter(
     }
 
     private suspend fun isModelAvailableInternal(): Boolean = try {
-        val response = webClient.get().uri("$baseUrl/api/tags")
+    val baseUrl = props.baseUrl
+    val response = webClient.get().uri("${baseUrl}/api/tags")
             .retrieve()
             .onStatus({ s -> s.value() == 429 }) { response -> throttledCounter?.increment(); response.createException() }
             .bodyToMono(OllamaTagsResponse::class.java)
             .timeout(Duration.ofSeconds(10))
             .awaitSingleOrNull()
-    response?.models?.any { model -> model.name == modelName } ?: false
+    response?.models?.any { model -> model.name == props.model } ?: false
     } catch (e: WebClientResponseException) {
         logger.debug("HTTP error checking Ollama model availability: {} {}", e.statusCode, e.message)
         false

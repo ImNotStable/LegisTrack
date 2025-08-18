@@ -154,6 +154,36 @@ curl http://localhost:8080/api/documents?page=0&size=5
 
 ## Configuration
 
+### Multi-Module Resource Placement & Driver Auto-Detection
+
+The executable Spring Boot fat jar is produced by the `api-rest` module. Place runtime `application.properties` / profile-specific overrides **inside** `backend/api-rest/src/main/resources` so they are included in the packaged jar. (The root aggregator module disables its own source sets; properties there are ignored at runtime.)
+
+We intentionally do **not** hard-code `spring.datasource.driver-class-name` so integration tests can switch to in-memory H2 with only a URL override (e.g. `jdbc:h2:mem:test;MODE=PostgreSQL`). Spring Boot will auto-detect the proper driver (PostgreSQL in Docker / H2 in tests) based on the JDBC URL. This avoids dialect and driver conflicts and keeps tests lightweight while production stays on Postgres.
+
+If you add new external `app.*` configuration keys, prefer adding a safe default (e.g. `:dummy-test-key`) to prevent test context failures when environment variables are absent. For stronger type-safety, a future enhancement is to introduce `@ConfigurationProperties` classes for these groups (e.g. `AppCongressApiProperties`).
+
+### Typed Configuration Properties
+
+The following external integration settings now use typed `@ConfigurationProperties` for safer refactoring and IDE metadata:
+
+| Prefix | Class | Purpose |
+|--------|-------|---------|
+| `app.congress.api` | `CongressApiProperties` | Congress API credentials, base URL, retry & circuit breaker tuning (validated) |
+| `app.ollama` | `OllamaProperties` | Ollama base URL, model name, bootstrap toggle (validated) |
+| `app.scheduler.data-ingestion` | `DataIngestionSchedulerProperties` | Enable flag, cron expression, lookback days for scheduled ingestion (validated) |
+
+They are enabled via `@EnableConfigurationProperties` in a single `WebConfig` (the previously duplicated root config class was removed to avoid double registration). Add new fields to these classes instead of scattering additional `@Value` injections. Provide safe defaults so the test profile loads without external secrets. Regeneration of configuration metadata (for IDE auto-complete / metadata JSON) is handled by the `spring-boot-configuration-processor` added to modules that declare configuration properties (e.g. adapters and ingestion). If you introduce a new module with `@ConfigurationProperties` classes, remember to add the processor there as an `annotationProcessor` dependency.
+
+#### Property Validation & Fail-Fast
+
+All configuration properties above now use Bean Validation to fail fast on invalid startup values:
+
+- `CongressApiProperties`: `@NotBlank` for API key (if required in the future), `@Pattern` for base URL format, min/max bounds on retry attempts, circuit breaker threshold & cooldown, and adaptive retry suppression percentage.
+- `OllamaProperties`: `@Pattern` restricts base URL to empty or valid http/https; `@NotBlank` ensures a model name is configured when AI features are enabled.
+- `DataIngestionSchedulerProperties`: validation for cron presence, non-negative lookback days, and enabled flag coherence.
+
+Invalid settings surface as clear startup exceptions instead of latent runtime errors. When adding new fields, prefer adding appropriate `@NotBlank`, `@Min`, `@Max`, or `@Pattern` constraints and safe defaults so CI/test profiles still load.
+
 ### Environment Variables
 
 | Variable | Default | Description |
@@ -305,6 +335,27 @@ Configuration properties:
 | `app.congress.api.cb.cooldown-seconds` | 30 | Minimum seconds breaker remains OPEN before permitting a trial call |
 
 Tuning guidance: Lower the threshold if upstream instability needs quicker isolation; increase cooldown for slower upstream recovery scenarios.
+
+#### Ingestion Scheduler Configuration
+
+The periodic ingestion job (default enabled) is governed by typed `DataIngestionSchedulerProperties`.
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `app.scheduler.data-ingestion.enabled` | `true` | Master switch for the scheduled job |
+| `app.scheduler.data-ingestion.cron` | `0 0 * * * ?` | Cron expression (Spring format) controlling execution cadence |
+| `app.scheduler.data-ingestion.lookback-days` | `7` | Number of days to look back when computing the `fromDate` passed to ingestion |
+
+Implementation details:
+* `ScheduledDataIngestionService` now injects `DataIngestionSchedulerProperties` and a `Clock` (UTC) for deterministic testing.
+* The cron expression is resolved via SpEL referencing the bound properties bean, avoiding hard-coded annotation values.
+* Lookback logic previously fixed at 7 days is now configurable; tests validate the derived `fromDate` given a fixed clock.
+* Disable scheduling in specific environments by setting `app.scheduler.data-ingestion.enabled=false` (the bean uses `@ConditionalOnProperty`).
+
+Operational guidance:
+* Increase `lookback-days` temporarily after outages to backfill a wider window.
+* For more frequent ingestion during legislative peaks, lower the cron interval (e.g., every 15 minutes: `0 */15 * * * *`). Balance against API rate limits ([DATA] vs [PERF]).
+* Changing the cron expression is hot-reloaded only on application restart (standard Spring scheduling behavior).
 
 #### Correlation Propagation
 Inbound requests establish/accept `X-Correlation-Id` which is now automatically propagated to outbound `WebClient` calls (added filter). This enables end-to-end tracing across adapters (Congress, Ollama) when aggregated in log/trace systems.

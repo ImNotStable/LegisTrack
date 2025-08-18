@@ -3,6 +3,7 @@ package com.legistrack.health
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import org.assertj.core.api.AbstractStringAssert
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -10,7 +11,7 @@ class HealthDetailEndpointsTest {
     private val service: HealthCheckService = mockk()
 
     @Test
-    fun should_return_congress_component() = runBlocking {
+    fun should_return_congress_component(): AbstractStringAssert<*>? = runBlocking {
         val components = mapOf(
             "congressApi" to ComponentHealth(status = "UP", latencyMs = 10, lastSuccessEpochMs = 1000L),
             "ollama" to ComponentHealth(status = "UP", latencyMs = 5, lastSuccessEpochMs = 1000L),
@@ -26,7 +27,7 @@ class HealthDetailEndpointsTest {
     }
 
     @Test
-    fun should_return_ollama_component() = runBlocking {
+    fun should_return_ollama_component(): AbstractStringAssert<*>? = runBlocking {
         val components = mapOf(
             "congressApi" to ComponentHealth(status = "UP", latencyMs = 10, lastSuccessEpochMs = 1000L),
             "ollama" to ComponentHealth(status = "DEGRADED", latencyMs = 15, lastSuccessEpochMs = 900L),
@@ -42,7 +43,7 @@ class HealthDetailEndpointsTest {
     }
 
     @Test
-    fun should_return_database_component() = runBlocking {
+    fun should_return_database_component(): AbstractStringAssert<*>? = runBlocking {
         val components = mapOf(
             "database" to ComponentHealth(status = "UP", latencyMs = 12, lastSuccessEpochMs = 1000L)
         )
@@ -55,7 +56,7 @@ class HealthDetailEndpointsTest {
     }
 
     @Test
-    fun should_return_cache_component() = runBlocking {
+    fun should_return_cache_component(): AbstractStringAssert<*>? = runBlocking {
         val components = mapOf(
             "cache" to ComponentHealth(status = "DEGRADED", latencyMs = 20, lastSuccessEpochMs = 500L)
         )

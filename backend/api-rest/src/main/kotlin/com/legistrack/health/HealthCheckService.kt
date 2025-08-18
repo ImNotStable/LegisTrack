@@ -12,6 +12,7 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Tag
 import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
 data class ComponentHealth(
@@ -77,7 +78,7 @@ class HealthCheckService(
         }
 
         val components = listOf(dbDeferred, cacheDeferred, ollamaDeferred, congressDeferred)
-            .map { it.await() }
+            .awaitAll()
             .toMap()
 
         // Critical components: if any are DOWN -> overall DOWN

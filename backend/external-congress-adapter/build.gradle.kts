@@ -21,6 +21,7 @@ dependencies {
     implementation(libs.bundles.kotlin)
     // Spring Boot core & caching support for annotations (@Component, @Cacheable, events)
     implementation(libs.bundles.spring.starters)
+    annotationProcessor(libs.spring.boot.config.processor)
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.mockk)

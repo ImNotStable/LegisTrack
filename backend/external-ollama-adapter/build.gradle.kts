@@ -18,6 +18,7 @@ dependencies {
     implementation(libs.bundles.jackson)
     implementation(libs.bundles.kotlin)
     implementation(libs.bundles.spring.starters)
+    annotationProcessor(libs.spring.boot.config.processor)
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.mockk)

@@ -28,6 +28,7 @@ dependencies {
     implementation(project(":external-ollama-adapter"))
     implementation(libs.bundles.spring.starters)
     implementation(libs.bundles.kotlin)
+    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 
     testImplementation(kotlin("test"))
     testImplementation(libs.bundles.test)

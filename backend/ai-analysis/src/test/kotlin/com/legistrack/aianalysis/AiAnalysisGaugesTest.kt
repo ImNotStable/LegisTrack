@@ -9,6 +9,7 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import org.assertj.core.api.AbstractDoubleAssert
 import java.time.LocalDateTime
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -20,7 +21,7 @@ class AiAnalysisGaugesTest {
     private val registry = SimpleMeterRegistry()
 
     @Test
-    fun should_update_gauges_on_success_and_failure() = runBlocking {
+    fun should_update_gauges_on_success_and_failure(): AbstractDoubleAssert<*>? = runBlocking {
     coEvery { modelPort.isServiceReady() } returns true
     coEvery { modelPort.isModelAvailable() } returns true
         coEvery { modelPort.generateAnalysis(any()) } returnsMany listOf("general text", "economic text", "tag1,tag2")

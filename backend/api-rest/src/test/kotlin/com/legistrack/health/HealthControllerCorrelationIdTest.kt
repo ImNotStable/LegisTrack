@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.header
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
@@ -41,7 +42,7 @@ class HealthControllerCorrelationIdTest {
     @Autowired lateinit var healthCheckService: HealthCheckService
 
     @Test
-    fun testCorrelationIdHeaderEchoesInResponse() = runBlocking {
+    fun testCorrelationIdHeaderEchoesInResponse(): ResultActions = runBlocking {
         val cid = "test-corr-123"
         coEvery { healthCheckService.health() } answers {
             AggregateHealth(

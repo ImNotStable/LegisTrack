@@ -11,6 +11,8 @@ import io.mockk.coJustRun
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import org.assertj.core.api.AbstractDoubleAssert
+import org.assertj.core.api.AbstractLongAssert
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -52,7 +54,7 @@ class AiAnalysisServiceMetricsTest {
     )
 
     @Test
-    fun `metrics increment on successful generation`() = runBlocking {
+    fun `metrics increment on successful generation`(): AbstractLongAssert<*>? = runBlocking {
         val service = newService()
         val doc = baseDocument()
         val result = service.generateAndPersist(doc)
@@ -68,7 +70,7 @@ class AiAnalysisServiceMetricsTest {
     }
 
     @Test
-    fun `metrics reflect failure path`() = runBlocking {
+    fun `metrics reflect failure path`(): AbstractDoubleAssert<*>? = runBlocking {
         val service = newService(persistSuccess = false)
         val doc = baseDocument()
         val result = service.generateAndPersist(doc)

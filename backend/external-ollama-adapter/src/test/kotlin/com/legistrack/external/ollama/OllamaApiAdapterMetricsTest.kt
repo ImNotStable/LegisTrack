@@ -30,11 +30,10 @@ class OllamaApiAdapterMetricsTest {
     @Test
     fun metricsIncrementOnSuccess() = runBlocking {
         val registry = SimpleMeterRegistry()
+        val props = OllamaProperties(baseUrl = "https://ollama.example", model = "mock", bootstrapEnabled = false)
         val adapter = OllamaApiAdapter(
             webClient = webClientWith(exchange(HttpStatus.OK)),
-            baseUrl = "https://ollama.example",
-            modelName = "mock",
-            bootstrapEnabled = false,
+            props = props,
             meterRegistry = registry
         )
         // Mark service ready to bypass readiness guard
@@ -52,11 +51,10 @@ class OllamaApiAdapterMetricsTest {
     @Test
     fun metricsIncrementOnFailure() = runBlocking {
         val registry = SimpleMeterRegistry()
+        val props = OllamaProperties(baseUrl = "https://ollama.example", model = "mock", bootstrapEnabled = false)
         val adapter = OllamaApiAdapter(
             webClient = webClientWith(exchange(HttpStatus.INTERNAL_SERVER_ERROR)),
-            baseUrl = "https://ollama.example",
-            modelName = "mock",
-            bootstrapEnabled = false,
+            props = props,
             meterRegistry = registry
         )
         val serviceReadyField = OllamaApiAdapter::class.java.getDeclaredField("serviceReady").apply { isAccessible = true }

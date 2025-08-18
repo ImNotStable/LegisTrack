@@ -6,6 +6,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.ResultActions
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -27,7 +28,7 @@ class HealthComponentsControllerTest {
     )
 
     @Test
-    fun testListComponents() = runBlocking {
+    fun testListComponents(): ResultActions = runBlocking {
         coEvery { service.health() } returns sampleAggregate()
         mockMvc.perform(get("/api/health/components").accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk)
@@ -36,7 +37,7 @@ class HealthComponentsControllerTest {
     }
 
     @Test
-    fun testGetSingleComponent() = runBlocking {
+    fun testGetSingleComponent(): ResultActions = runBlocking {
         coEvery { service.health() } returns sampleAggregate()
         mockMvc.perform(get("/api/health/database"))
             .andExpect(status().isOk)
@@ -44,7 +45,7 @@ class HealthComponentsControllerTest {
     }
 
     @Test
-    fun testUnknownComponentReturns404() = runBlocking {
+    fun testUnknownComponentReturns404(): ResultActions = runBlocking {
         coEvery { service.health() } returns sampleAggregate()
         mockMvc.perform(get("/api/health/unknownX"))
             .andExpect(status().isNotFound)

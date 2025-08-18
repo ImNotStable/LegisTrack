@@ -36,11 +36,10 @@ class CongressApiAdapterMetricsTest {
     fun metricsIncrementOn429AndParseHeaders() = runBlocking {
         val registry = SimpleMeterRegistry()
         val exchange = dummyExchange(HttpStatus.TOO_MANY_REQUESTS, mapOf("x-ratelimit-remaining" to "7", "x-ratelimit-reset" to "12"))
+        val props = CongressApiProperties(key = "test", baseUrl = "https://example.org", retryAttempts = 0)
         val adapter = CongressApiAdapter(
             webClient = webClientWith(exchange),
-            apiKey = "test",
-            baseUrl = "https://example.org",
-            configuredRetryAttempts = 0, // disable retries for deterministic metrics
+            props = props,
             meterRegistry = registry
         )
         adapter.getRecentBills(LocalDate.now().minusDays(1), 0, 1)
@@ -65,13 +64,8 @@ class CongressApiAdapterMetricsTest {
                 "x-ratelimit-limit" to "120"
             )
         )
-        val adapter = CongressApiAdapter(
-            webClient = webClientWith(exchange),
-            apiKey = "test",
-            baseUrl = "https://example.org",
-            configuredRetryAttempts = 0,
-            meterRegistry = registry
-        )
+    val props = CongressApiProperties(key = "test", baseUrl = "https://example.org", retryAttempts = 0)
+    val adapter = CongressApiAdapter(webClientWith(exchange), props, registry)
         adapter.getRecentBills(LocalDate.now().minusDays(1), 0, 1)
         assertEquals(30, registry.get("congress.api.rateLimit.remaining").gauge().value().toInt())
         assertEquals(55, registry.get("congress.api.rateLimit.resetSeconds").gauge().value().toInt())
@@ -86,7 +80,7 @@ class CongressApiAdapterMetricsTest {
     fun metricsIncrementErrorsOn500() = runBlocking {
         val registry = SimpleMeterRegistry()
         val exchange = dummyExchange(HttpStatus.INTERNAL_SERVER_ERROR)
-    val adapter = CongressApiAdapter(webClientWith(exchange), "test", "https://example.org", configuredRetryAttempts = 0, meterRegistry = registry)
+    val adapter = CongressApiAdapter(webClientWith(exchange), CongressApiProperties(key="test", baseUrl="https://example.org", retryAttempts=0), registry)
         adapter.getRecentBills(LocalDate.now().minusDays(1), 0, 1)
         val errors = registry.counter("congress.api.errors").count().toInt()
         val requests = registry.counter("congress.api.requests").count().toInt()
@@ -112,13 +106,7 @@ class CongressApiAdapterMetricsTest {
                     .build()
             )
         }
-        val adapter = CongressApiAdapter(
-            webClient = webClientWith(exchange),
-            apiKey = "test",
-            baseUrl = "https://example.org",
-            configuredRetryAttempts = 2,
-            meterRegistry = registry
-        )
+    val adapter = CongressApiAdapter(webClientWith(exchange), CongressApiProperties(key="test", baseUrl="https://example.org", retryAttempts=2), registry)
         adapter.getRecentBills(LocalDate.now().minusDays(1), 0, 1)
         val requests = registry.counter("congress.api.requests").count().toInt()
         // Only the successful terminal attempt increments requests (prior failures throw before response mapping)
@@ -134,13 +122,7 @@ class CongressApiAdapterMetricsTest {
     fun latencyTimerRecordsOnSuccess() = runBlocking {
         val registry = SimpleMeterRegistry()
         val exchange = dummyExchange(HttpStatus.OK)
-        val adapter = CongressApiAdapter(
-            webClient = webClientWith(exchange),
-            apiKey = "test",
-            baseUrl = "https://example.org",
-            configuredRetryAttempts = 0,
-            meterRegistry = registry
-        )
+    val adapter = CongressApiAdapter(webClientWith(exchange), CongressApiProperties(key="test", baseUrl="https://example.org", retryAttempts=0), registry)
         adapter.getRecentBills(LocalDate.now().minusDays(1), 0, 1)
         val timer = registry.find("congress.api.latency").tags("operation", "recentBills", "outcome", "success").timer()
         assert(timer != null && timer.count() == 1L) { "Expected latency timer to record one success for recentBills" }
@@ -165,13 +147,7 @@ class CongressApiAdapterMetricsTest {
                 )
             }
         }
-        val adapter = CongressApiAdapter(
-            webClient = webClientWith(exchange),
-            apiKey = "test",
-            baseUrl = "https://example.org",
-            configuredRetryAttempts = 1,
-            meterRegistry = registry
-        )
+    val adapter = CongressApiAdapter(webClientWith(exchange), CongressApiProperties(key="test", baseUrl="https://example.org", retryAttempts=1), registry)
         adapter.getRecentBills(LocalDate.now().minusDays(1), 0, 1)
         val successTimer = registry.find("congress.api.latency").tags("operation", "recentBills", "outcome", "success").timer()
         val errorTimer = registry.find("congress.api.latency").tags("operation", "recentBills", "outcome", "error").timer()
@@ -184,13 +160,7 @@ class CongressApiAdapterMetricsTest {
         val registry = SimpleMeterRegistry()
         // Always fail
         val exchange = ExchangeFunction { _: ClientRequest -> Mono.error(RuntimeException("boom")) }
-        val adapter = CongressApiAdapter(
-            webClient = webClientWith(exchange),
-            apiKey = "test",
-            baseUrl = "https://example.org",
-            configuredRetryAttempts = 0,
-            meterRegistry = registry
-        )
+    val adapter = CongressApiAdapter(webClientWith(exchange), CongressApiProperties(key="test", baseUrl="https://example.org", retryAttempts=0), registry)
         adapter.getBillDetails(118, "hr", "999") // returns null
         val errorTimer = registry.find("congress.api.latency").tags("operation", "billDetails", "outcome", "error").timer()
         assert(errorTimer != null && errorTimer.count() == 1L) { "Expected one error latency timer for failed billDetails" }
@@ -200,13 +170,7 @@ class CongressApiAdapterMetricsTest {
     fun metricsCacheMissIncrements() = runBlocking {
         val registry = SimpleMeterRegistry()
         val exchange = dummyExchange(HttpStatus.OK)
-        val adapter = CongressApiAdapter(
-            webClient = webClientWith(exchange),
-            apiKey = "test",
-            baseUrl = "https://example.org",
-            configuredRetryAttempts = 0,
-            meterRegistry = registry
-        )
+    val adapter = CongressApiAdapter(webClientWith(exchange), CongressApiProperties(key="test", baseUrl="https://example.org", retryAttempts=0), registry)
         adapter.getRecentBills(LocalDate.now().minusDays(1), 0, 1)
         adapter.getBillDetails(118, "hr", "123")
         val missCount = registry.counter("congress.api.cache.miss").count().toInt()
@@ -223,15 +187,8 @@ class CongressApiAdapterMetricsTest {
             Mono.error(RuntimeException("boom"))
         }
         // Use a small threshold so we can observe short-circuits within a few invocations
-        val adapter = CongressApiAdapter(
-            webClient = webClientWith(exchange),
-            apiKey = "test",
-            baseUrl = "https://example.org",
-            configuredRetryAttempts = 0,
-            breakerThreshold = 2,
-            breakerCooldownSeconds = 60, // long cooldown ensures it stays open
-            meterRegistry = registry,
-        )
+    val props = CongressApiProperties(key="test", baseUrl="https://example.org", retryAttempts=0, cb = CongressApiProperties.Cb(threshold=2, cooldownSeconds=60))
+    val adapter = CongressApiAdapter(webClientWith(exchange), props, registry)
         // Invoke several times; only the first 'threshold' attempts should hit the exchange (calls variable)
         repeat(6) { adapter.getRecentBills(LocalDate.now().minusDays(1), 0, 1) }
         // After opening, subsequent calls should be short-circuited and not increment 'calls'
@@ -263,13 +220,7 @@ class CongressApiAdapterMetricsTest {
             }
         }
         // Use default threshold=5; we'll trigger 5 failures then mark success and simulate cooldown by manipulating internal state via reflection (simplified assumption) - for test brevity we just continue causing failures then success; outcome check limited to gauge transitions.
-        val adapter = CongressApiAdapter(
-            webClient = webClientWith(exchange),
-            apiKey = "test",
-            baseUrl = "https://example.org",
-            configuredRetryAttempts = 0,
-            meterRegistry = registry
-        )
+    val adapter = CongressApiAdapter(webClientWith(exchange), CongressApiProperties(key="test", baseUrl="https://example.org", retryAttempts=0), registry)
         repeat(5) { adapter.getRecentBills(LocalDate.now().minusDays(1), 0, 1) }
         // Breaker should be open now
         val stateOpen = registry.get("congress.api.circuit.state").gauge().value().toInt()
@@ -301,13 +252,7 @@ class CongressApiAdapterMetricsTest {
                     .build()
             )
         }
-        val adapter = CongressApiAdapter(
-            webClient = webClientWith(exchange),
-            apiKey = "test",
-            baseUrl = "https://example.org",
-            configuredRetryAttempts = 2, // would attempt retries if not suppressed
-            meterRegistry = registry
-        )
+    val adapter = CongressApiAdapter(webClientWith(exchange), CongressApiProperties(key="test", baseUrl="https://example.org", retryAttempts=2), registry)
         // Seed internal rate limit gauges BEFORE first call so adaptive suppression logic sees low remaining pct
         run {
             val klass = adapter::class.java

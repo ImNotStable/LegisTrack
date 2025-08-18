@@ -7,13 +7,12 @@ import com.legistrack.domain.port.CongressPort
 import kotlinx.coroutines.reactor.awaitSingle
 import kotlinx.coroutines.reactor.awaitSingleOrNull
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import org.springframework.cache.annotation.Cacheable
-import org.springframework.stereotype.Component
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.util.UriComponentsBuilder
 import reactor.util.retry.Retry
@@ -44,13 +43,7 @@ private data class CongressBillDetailWrapper(
 @Component
 open class CongressApiAdapter(
     private val webClient: WebClient,
-    // Provide safe defaults so tests can load context without defining credentials
-    @Value("\${app.congress.api.key:dummy-test-key}") private val apiKey: String,
-    @Value("\${app.congress.api.base-url:https://api.congress.gov/v3}") private val baseUrl: String,
-    @Value("\${app.congress.api.retry-attempts:3}") private val configuredRetryAttempts: Long = 3,
-    @Value("\${app.congress.api.cb.threshold:5}") private val breakerThreshold: Int = 5,
-    @Value("\${app.congress.api.cb.cooldown-seconds:30}") private val breakerCooldownSeconds: Long = 30,
-    @Value("\${app.congress.api.retry-adaptive-threshold-percent:10}") private val adaptiveRetryThresholdPct: Double = 10.0,
+    private val props: CongressApiProperties,
     private val meterRegistry: MeterRegistry? = null,
 ) : CongressPort {
     companion object {
@@ -114,11 +107,11 @@ open class CongressApiAdapter(
 
     private fun onFailure() {
         val failCount = consecutiveFailureHolder.incrementAndGet()
-        if (breakerStateHolder.get() == 0 && failCount >= breakerThreshold) {
+        if (breakerStateHolder.get() == 0 && failCount >= props.breakerThreshold) {
             breakerStateHolder.set(1)
             breakerOpenedAt = System.nanoTime()
             circuitOpenCounter?.increment()
-            logger.warn("Congress API circuit breaker opened after $failCount consecutive failures (threshold=$breakerThreshold)")
+            logger.warn("Congress API circuit breaker opened after $failCount consecutive failures (threshold=${props.breakerThreshold})")
         }
     }
 
@@ -137,7 +130,7 @@ open class CongressApiAdapter(
         if (breakerStateHolder.get() == 0) return true
         if (breakerOpenedAt < 0) return true
         val elapsedSeconds = (System.nanoTime() - breakerOpenedAt) / 1_000_000_000
-        return elapsedSeconds >= breakerCooldownSeconds
+    return elapsedSeconds >= props.breakerCooldownSeconds
     }
 
     private inline fun <T> withBreaker(operation: String, fallback: () -> T, block: () -> T): T {
@@ -170,12 +163,12 @@ open class CongressApiAdapter(
             }
 
     private fun adaptiveRetryAttempts(): Long {
-        val configured = configuredRetryAttempts.coerceAtLeast(0)
+    val configured = props.retryAttempts.coerceAtLeast(0)
         val limit = limitGaugeHolder.get()
         val remaining = remainingGaugeHolder.get()
         if (configured > 0 && limit > 0 && remaining >= 0) {
             val pct = (remaining.toDouble() / limit.toDouble()) * 100.0
-            if (pct < adaptiveRetryThresholdPct) { // low remaining budget - suppress retries
+            if (pct < props.retryAdaptiveThresholdPercent) { // low remaining budget - suppress retries
                 adaptiveRetrySuppressedCounter?.increment()
                 return 0
             }
@@ -188,9 +181,9 @@ open class CongressApiAdapter(
     cacheMissCounter?.increment() // manual miss metric (method body executed)
     val start = System.nanoTime()
         val dateStr = fromDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
-        val uri = UriComponentsBuilder.fromUriString(baseUrl)
+    val uri = UriComponentsBuilder.fromUriString(props.baseUrl)
             .path("/bill")
-            .queryParam("api_key", apiKey)
+            .queryParam("api_key", props.key)
             .queryParam("fromDateTime", "${dateStr}T00:00:00Z")
             .queryParam("sort", "latestAction.actionDate+desc")
             .queryParam("limit", limit)
@@ -228,9 +221,9 @@ open class CongressApiAdapter(
     override suspend fun getBillDetails(congress: Int, billType: String, billNumber: String): CongressBillDetail? {
     cacheMissCounter?.increment()
     val start = System.nanoTime()
-        val uri = UriComponentsBuilder.fromUriString(baseUrl)
+    val uri = UriComponentsBuilder.fromUriString(props.baseUrl)
             .path("/bill/{congress}/{type}/{number}")
-            .queryParam("api_key", apiKey)
+            .queryParam("api_key", props.key)
             .queryParam("format", "json")
             .buildAndExpand(congress, billType.lowercase(), billNumber)
             .toUri()
@@ -273,9 +266,9 @@ open class CongressApiAdapter(
     val start = System.nanoTime()
         // Use a minimal request with limit=1; rely on same endpoint but cheap response size
         val dateStr = LocalDate.now().minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE)
-        val uri = UriComponentsBuilder.fromUriString(baseUrl)
+    val uri = UriComponentsBuilder.fromUriString(props.baseUrl)
             .path("/bill")
-            .queryParam("api_key", apiKey)
+            .queryParam("api_key", props.key)
             .queryParam("fromDateTime", "${dateStr}T00:00:00Z")
             .queryParam("limit", 1)
             .queryParam("offset", 0)

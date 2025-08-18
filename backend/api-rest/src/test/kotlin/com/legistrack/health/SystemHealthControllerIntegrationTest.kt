@@ -1,6 +1,7 @@
 package com.legistrack.health
 
 import com.legistrack.external.congress.CongressApiAdapter
+import com.legistrack.external.congress.CongressApiProperties
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
@@ -19,11 +20,16 @@ class SystemHealthControllerIntegrationTest {
     @Test
     fun should_includeCongressSnapshot() = runBlocking {
         val registry = SimpleMeterRegistry()
+        val props = CongressApiProperties(
+            key = "test",
+            baseUrl = "https://example.org",
+            retryAttempts = 0,
+            cb = CongressApiProperties.Cb(threshold = 5, cooldownSeconds = 30),
+            retryAdaptiveThresholdPercent = 10.0
+        )
         val adapter = CongressApiAdapter(
             webClient = WebClient.builder().build(),
-            apiKey = "test",
-            baseUrl = "https://example.org",
-            configuredRetryAttempts = 0,
+            props = props,
             meterRegistry = registry
         )
         val cls = adapter::class.java
