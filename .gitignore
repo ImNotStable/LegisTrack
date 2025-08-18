@@ -152,9 +152,41 @@ mvnw.cmd
 docker-compose.override.yml
 
 ########## Obsidian (volatile) ##########
-obsidian/LegisTrack/.obsidian/workspace.json
-obsidian/LegisTrack/.obsidian/graph.json
-obsidian/LegisTrack/.obsidian/appearance.json
-obsidian/LegisTrack/.obsidian/undo-history/**
+obsidian/LegisTrack/.obsidian/
+# Re-include any markdown notes if accidentally nested (defensive)
+!obsidian/LegisTrack/**/*.md
+
+########## Local Dev Helpers ##########
+.direnv/
+.envrc
+*.code-workspace
+
+########## Editor Swap / Backup (extra) ##########
+*.swp
+*.swa
+*.swx
+*.orig
+
+########## Frontend Source Maps (optionally keep if needed) ##########
+frontend/build/**/*.js.map
+
+########## Coverage (already partly covered) ##########
+coverage-final.json
+lcov-report/
+
+########## Yarn / PNPM (future-proof) ##########
+.pnp.*
+.yarn/
+pnpm-lock.yaml
+
+########## Docker Local Volumes ##########
+docker-data/
+
+########## Potential Secret YAML (defensive) ##########
+secrets*.yml
+secrets*.yaml
+
+########## Security: keep template but ignore real env ##########
+!.env.example
 
 ########## End ##########
