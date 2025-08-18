@@ -78,6 +78,12 @@
       "prPriority": 30
     },
     {
+      "matchUpdateTypes": ["major"],
+      "groupName": "scheduled-major-upgrades",
+      "schedule": ["on saturday"],
+      "prPriority": 10
+    },
+    {
       "matchManagers": [
         "github-actions"
       ],
