@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:base",
+    "config:recommended",
     ":dependencyDashboard",
     ":semanticCommits",
     ":semanticCommitTypeAll(chore)",
@@ -9,9 +9,13 @@
     "group:recommended",
     "helpers:pinGitHubActionDigests"
   ],
-  "labels": ["dependencies"],
+  "labels": [
+    "dependencies"
+  ],
   "timezone": "UTC",
-  "schedule": ["before 7am on Monday"],
+  "schedule": [
+    "before 7am on Monday"
+  ],
   "prHourlyLimit": 4,
   "prConcurrentLimit": 12,
   "dependencyDashboard": true,
@@ -20,59 +24,99 @@
   "rangeStrategy": "replace",
   "platformAutomerge": true,
   "commitBodyTable": true,
-  "enabledManagers": ["gradle", "npm", "dockerfile"],
+  "enabledManagers": [
+    "gradle",
+    "npm",
+    "dockerfile"
+  ],
   "gradle": {
     "enabled": true,
-    "fileMatch": ["backend/.*\\.gradle(\\.kts)?$", "backend/gradle/libs\\.versions\\.toml"],
-    "ignorePaths": ["**/build/**"],
+    "managerFilePatterns": [
+      "/backend/.*\\.gradle(\\.kts)?$/",
+      "/backend/gradle/libs\\.versions\\.toml/"
+    ],
+    "ignorePaths": [
+      "**/build/**"
+    ],
     "semanticCommitType": "chore"
   },
   "npm": {
     "enabled": true,
-    "fileMatch": ["frontend/package.json"],
+    "managerFilePatterns": [
+      "/frontend/package.json/"
+    ],
     "semanticCommitType": "chore",
-    "postUpdateOptions": ["npmDedupe"],
+    "postUpdateOptions": [
+      "npmDedupe"
+    ],
     "packageRules": [
       {
-        "matchUpdateTypes": ["minor", "patch"],
+        "matchUpdateTypes": [
+          "minor",
+          "patch"
+        ],
         "automerge": true,
         "automergeType": "pr",
-        "requiredStatusChecks": null
+        "ignoreTests": true
       }
     ]
   },
   "dockerfile": {
     "enabled": true,
-  "fileMatch": ["(^|/)Dockerfile$"] ,
+    "managerFilePatterns": [
+      "/(^|/)Dockerfile$/"
+    ],
     "semanticCommitType": "chore"
   },
   "packageRules": [
     {
       "groupName": "kotlin-stack",
-      "matchPackagePatterns": ["^org.jetbrains.kotlin", "^org.jetbrains.kotlinx", "ktlint", "detekt"],
-      "prPriority": 20
+      "prPriority": 20,
+      "matchPackageNames": [
+        "/^org.jetbrains.kotlin/",
+        "/^org.jetbrains.kotlinx/",
+        "/ktlint/",
+        "/detekt/"
+      ]
     },
     {
       "groupName": "spring-platform",
-      "matchPackagePatterns": ["^org.springframework", "spring-boot", "spring-cloud"],
-      "prPriority": 25
+      "prPriority": 25,
+      "matchPackageNames": [
+        "/^org.springframework/",
+        "/spring-boot/",
+        "/spring-cloud/"
+      ]
     },
     {
-      "matchUpdateTypes": ["digest", "major"],
-      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": [
+        "digest",
+        "major"
+      ],
+      "matchDepTypes": [
+        "dependencies"
+      ],
       "prPriority": 30
     },
     {
-      "matchManagers": ["github-actions"],
-      "matchUpdateTypes": ["patch", "minor"],
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
       "automerge": true,
       "automergeType": "branch"
     }
   ],
   "vulnerabilityAlerts": {
-    "labels": ["security", "dependencies"],
+    "labels": [
+      "security",
+      "dependencies"
+    ],
     "automerge": false
   },
   "onboarding": false,
-  "regexManagers": []
+  "customManagers": []
 }
