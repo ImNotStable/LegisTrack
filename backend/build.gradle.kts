@@ -1,5 +1,19 @@
-// Root build acts as aggregator after Phase 6 (api-rest executable module extracted)
-// Keep Spring Boot + Kotlin plugins to ensure consistent plugin classpath across modules.
+/*
+ * Copyright (c) 2025 LegisTrack
+ *
+ * Licensed under the MIT License. You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import com.github.benmanes.gradle.versions.updates.DependencyUpdatesTask
+
 plugins {
     alias(libs.plugins.spring.boot)
     alias(libs.plugins.spring.dependency.management)
@@ -9,6 +23,8 @@ plugins {
     alias(libs.plugins.kotlin.plugin.allopen)
     alias(libs.plugins.kotlin.plugin.noarg)
     alias(libs.plugins.ktlint)
+    // Detekt plugin intentionally disabled: 1.23.8 built with Kotlin 2.0.21 → incompatible with project Kotlin 2.1.0 (build failure on task :detekt)
+    // Leave version in catalog; re-enable once a Detekt release compiled against Kotlin 2.1.x is available.
     id("com.diffplug.spotless") version "6.25.0" // tooling plugin explicit (not in version catalog yet)
     id("com.github.ben-manes.versions") version "0.51.0" // dependency update audit
 }
@@ -52,6 +68,8 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
 }
+
+// Detekt configuration block removed due to incompatibility (see plugin comment above)
 
 tasks {
     withType<Test> {
@@ -104,7 +122,7 @@ tasks {
     }
 
 
-    // Aggregate checks (temporarily exclude detekt until toolchain aligns with Kotlin 2.1)
+    // Aggregate checks (detekt excluded until Kotlin 2.1 compatible release ships)
     named("check") {
         dependsOn("ktlintCheck")
     }
@@ -113,7 +131,8 @@ tasks {
     register<DependencyUpdatesTask>("dependencyUpdatesFiltered") {
         rejectVersionIf {
             val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { candidate.version.uppercase().contains(it) }
-            val regex = "^(?!.*(alpha|beta|rc|cr|m|preview|b\d)).*".toRegex(RegexOption.IGNORE_CASE)
+            // Escape digit class correctly for Kotlin string
+            val regex = "^(?!.*(alpha|beta|rc|cr|m|preview|b\\d)).*".toRegex(RegexOption.IGNORE_CASE)
             val isStable = stableKeyword || candidate.version.matches(regex)
             val currentStable = stableKeyword || currentVersion.matches(regex)
             currentStable && !isStable
@@ -123,16 +142,9 @@ tasks {
     }
 }
 
-// Detekt static analysis
-// NOTE: Detekt configuration commented out pending upgrade to version compatible with Kotlin 2.1
-// detekt {
-//     buildUponDefaultConfig = true
-//     allRules = false
-//     config.setFrom(files("config/detekt/detekt.yml"))
-// }
-// tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
-//     jvmTarget = "21"
-// }
+// Detekt remains disabled: last attempt (1.23.8) failed with message:
+// "detekt was compiled with Kotlin 2.0.21 but is currently running with 2.1.0. This is not supported." 
+// Action: Monitor Detekt release notes; re-enable when build uses Kotlin 2.1.
 
 // Remove duplicate check dependency declarations
 
