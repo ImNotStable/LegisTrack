@@ -28,8 +28,8 @@ dependencies {
     
     // Database
     implementation("org.postgresql:postgresql:42.7.4")
-    implementation("org.flywaydb:flyway-core:10.17.2")
-    implementation("org.flywaydb:flyway-database-postgresql:10.17.2")
+    implementation("org.flywaydb:flyway-core:10.22.0")
+    implementation("org.flywaydb:flyway-database-postgresql:10.22.0")
     
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-reflect")
