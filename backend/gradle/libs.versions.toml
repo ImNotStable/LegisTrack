@@ -12,7 +12,7 @@ testcontainers-bom = "1.21.3"
 
 jackson = "2.17.2"
 coroutines = "1.8.1"
-postgres = "42.7.4"
+postgres = "42.7.7"
 flyway = "10.17.2"
 lettuce = "6.3.2.RELEASE"
 h2 = "2.2.224"
