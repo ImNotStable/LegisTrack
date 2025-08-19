@@ -3,7 +3,7 @@
 spring-boot = "3.4.0"
 spring-dep-mgmt = "1.1.6"
 kotlin = "2.1.0"
-graalvm-native = "0.10.4"
+graalvm-native = "0.11.0"
 ktlint = "13.0.0"
 foojay = "0.8.0"
 
