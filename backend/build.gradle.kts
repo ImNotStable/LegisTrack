@@ -26,7 +26,7 @@ plugins {
     // Detekt plugin intentionally disabled: 1.23.8 built with Kotlin 2.0.21 → incompatible with project Kotlin 2.1.0 (build failure on task :detekt)
     // Leave version in catalog; re-enable once a Detekt release compiled against Kotlin 2.1.x is available.
     id("com.diffplug.spotless") version "6.25.0" // tooling plugin explicit (not in version catalog yet)
-    id("com.github.ben-manes.versions") version "0.51.0" // dependency update audit
+    id("com.github.ben-manes.versions") version "0.52.0" // dependency update audit
 }
 
 group = "com.legistrack"
