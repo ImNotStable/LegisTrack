@@ -27,7 +27,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     
     // Database
-    implementation("org.postgresql:postgresql:42.7.4")
+    implementation("org.postgresql:postgresql:42.7.7")
     implementation("org.flywaydb:flyway-core:10.17.2")
     implementation("org.flywaydb:flyway-database-postgresql:10.17.2")
     
