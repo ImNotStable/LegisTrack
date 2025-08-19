@@ -73,7 +73,7 @@
 		"eslint-plugin-prettier": "5.5.4",
 		"eslint-config-prettier": "9.1.2",
 		"eslint-plugin-unused-imports": "2.0.0",
-		"eslint-import-resolver-typescript": "3.6.1"
+		"eslint-import-resolver-typescript": "3.10.1"
 	},
 	"overrides": {
 		"nth-check": "2.1.1",
