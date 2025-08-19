@@ -10,7 +10,7 @@ foojay = "0.8.0"
 spring-cloud = "2024.0.0"
 testcontainers-bom = "1.21.3"
 
-jackson = "2.17.2"
+jackson = "2.19.2"
 coroutines = "1.8.1"
 postgres = "42.7.4"
 flyway = "10.17.2"
