@@ -1,5 +1,5 @@
 [versions]
- junit-jupiter = "5.10.2"
+ junit-jupiter = "5.13.4"
 spring-boot = "3.4.0"
 spring-dep-mgmt = "1.1.6"
 kotlin = "2.1.0"
