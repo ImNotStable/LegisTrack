@@ -1,13 +1,13 @@
 [versions]
  junit-jupiter = "5.10.2"
-spring-boot = "3.4.0"
+spring-boot = "3.5.5"
 spring-dep-mgmt = "1.1.6"
 kotlin = "2.1.0"
 graalvm-native = "0.10.4"
 ktlint = "13.0.0"
 foojay = "0.8.0"
 
-spring-cloud = "2024.0.0"
+spring-cloud = "2024.0.2"
 testcontainers-bom = "1.21.3"
 
 jackson = "2.17.2"
