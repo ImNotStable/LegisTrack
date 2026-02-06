@@ -1,5 +1,5 @@
 # Build stage
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM eclipse-temurin:21.0.10_7-jdk-alpine AS build
 
 WORKDIR /app
 
@@ -30,7 +30,7 @@ COPY config config
 RUN ./gradlew bootJar --no-daemon --quiet
 
 # Runtime stage
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:21.0.10_7-jre-alpine
 
 WORKDIR /app
 
