@@ -36,8 +36,8 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib")
     
     // JSON (for port interface compatibility)
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2")
-    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.2")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.21.3")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.21.3")
     
     // Testing
     testImplementation("org.junit.jupiter:junit-jupiter")
